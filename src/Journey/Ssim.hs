@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Ssim (
+module Journey.Ssim (
       readSsimFile
     , ssimSegments
     , toPort
@@ -13,7 +13,6 @@ import Data.ByteString.Lex.Integral (readDecimal)
 import Data.Attoparsec.ByteString (Parser, (<?>))
 import qualified Data.Attoparsec.ByteString.Char8 as P
 import qualified Data.Attoparsec.ByteString.Lazy as LP
-
 import Data.Functor ((<$>))
 import Control.Monad (void, join)
 import Control.Applicative (pure, some, (<*>), (<*), (*>), (<|>))
@@ -22,14 +21,13 @@ import Data.Function (on)
 import Data.Maybe (fromMaybe)
 import Data.Char (ord, chr)
 import Data.Bits (bit)
-
 import Data.Time.Clock (secondsToDiffTime)
 import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.LocalTime (timeOfDayToTime, makeTimeOfDayValid)
 
-import Types ( AirlineCode(..), LegPeriod(..), SegmentPeriod
-             , SegmentData(..), Flight(..), Port(..), Dow(..)
-             , PeriodBoundary, TimeVariation, ScheduleTime, OnD, segmentIdx)
+import Journey.Types ( AirlineCode(..), LegPeriod(..), SegmentPeriod
+                     , SegmentData(..), Flight(..), Port(..), Dow(..)
+                     , PeriodBoundary, TimeVariation, ScheduleTime, OnD, segmentIdx)
 
 {-------------------------------------------------------------------------------
   SSIM data types

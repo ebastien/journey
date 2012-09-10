@@ -1,4 +1,4 @@
-module Connection (
+module Journey.Connection (
       fromSegments
     , toOnDs
     , connections
@@ -10,10 +10,9 @@ import Control.Monad (mzero)
 import Data.Time.Calendar (Day, addDays, diffDays)
 import Data.Time.Clock (secondsToDiffTime)
 
-import qualified EnumMap as M
-
-import Types ( Port, SegmentPeriod, OnD, SegmentDate(..), Path
-             , ScheduleTime, TimeDuration, LegPeriod(..), withinPeriod )
+import qualified Journey.EnumMap as M
+import Journey.Types ( Port, SegmentPeriod, OnD, SegmentDate(..), Path
+                     , ScheduleTime, TimeDuration, LegPeriod(..), withinPeriod )
 
 {-------------------------------------------------------------------------------
   Connection building

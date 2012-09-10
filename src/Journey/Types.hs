@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Types (
+module Journey.Types (
       AirlineCode(..)
     , Port(..)
     , OnD
@@ -25,7 +25,6 @@ module Types (
 import Data.Word (Word8)
 import Data.Bits (testBit)
 import Data.Char (chr, ord)
-
 import Data.Time.Clock (DiffTime)
 import Data.Time.Calendar (Day)
 import Data.Time.Calendar.WeekDate (toWeekDate)

@@ -1,4 +1,4 @@
-module Route (
+module Journey.Route (
       PortMap
     , Distance
     , MetricSpace
@@ -14,9 +14,9 @@ module Route (
     
 import Control.Monad (foldM, mzero)
 import Data.Maybe (mapMaybe)
-import qualified EnumMap as M
 
-import Types (Port, Path, OnD)
+import qualified Journey.EnumMap as M
+import Journey.Types (Port, Path, OnD)
 
 -- | A sorted collection of port associations.
 type PortMap a = M.EnumMap Port a

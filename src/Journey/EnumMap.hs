@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module EnumMap (
+module Journey.EnumMap (
       EnumMap
     , fromList
     , toList
@@ -14,7 +14,6 @@ module EnumMap (
     ) where
 
 import Prelude hiding (lookup, filter)
-
 import qualified Data.IntMap as M
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)

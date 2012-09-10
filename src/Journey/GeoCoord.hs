@@ -1,4 +1,4 @@
-module GeoCoord (
+module Journey.GeoCoord (
       loadReferences
     , assocToCities
     , adjacency
@@ -8,17 +8,16 @@ import Control.Monad (join)
 import Data.Maybe (fromJust)
 import Control.Arrow ((***))
 import Data.List (nub)
-
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Vector as V
-import qualified EnumMap as M
 
-import Route ( MetricSpace(..), PortAdjacencies
-               , Edge(..), Distance, PortMap )
-import Types (Port, OnD)
-import Ssim (toPort)
+import qualified Journey.EnumMap as M
+import Journey.Route ( MetricSpace(..), PortAdjacencies
+                     , Edge(..), Distance, PortMap )
+import Journey.Types (Port, OnD)
+import Journey.Ssim (toPort)
 
 {-
   Geographic coordinates space

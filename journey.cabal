@@ -1,0 +1,46 @@
+Name:          journey
+Version:       0.1
+Synopsis:      Itineraries by air transportation
+Description:
+  A library for computation of itineraries from IATA SSIM 7 data files.
+
+Author:        Emmanuel Bastien
+Maintainer:    os@ebastien.name
+Stability:     Experimental
+Cabal-Version: >=1.14.0
+Build-Type:    Simple
+Tested-With:   GHC ==7.4.1
+
+Library
+  Hs-source-dirs: src
+  Build-Depends:
+    base, time, bytestring, bytestring-lexing, attoparsec,
+    vector, text, text-format, containers
+  Exposed-Modules:
+    Journey.Ssim,
+    Journey.Route,
+    Journey.GeoCoord,
+    Journey.Connection,
+    Journey.Builder
+  Other-Modules:
+    Journey.EnumMap,
+    Journey.Types
+  GHC-Options: -O2
+  Default-Language: Haskell2010
+
+Executable journey
+  Hs-source-dirs:  src
+  Main-is:         Main.hs
+  Build-Depends:
+    base, time, bytestring, bytestring-lexing, attoparsec,
+    vector, text, text-format, containers
+  Other-Modules:
+    Journey.Ssim,
+    Journey.Route,
+    Journey.GeoCoord,
+    Journey.Connection,
+    Journey.Builder
+    Journey.EnumMap,
+    Journey.Types
+  GHC-Options: -O2
+  Default-Language: Haskell2010

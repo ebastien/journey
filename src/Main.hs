@@ -10,13 +10,12 @@ import qualified Data.Text.Lazy.IO as T
 import Data.Text.Lazy.Builder (toLazyText)
 import System.Environment (getArgs)
 
-import Ssim (readSsimFile, ssimSegments, toDate)
-import Route (coverages)
-import GeoCoord (loadReferences, assocToCities, adjacency)
-import Connection (fromSegments, toOnDs)
-import Builder (buildAll)
+import Journey.Ssim (readSsimFile, ssimSegments, toDate)
+import Journey.Route (coverages)
+import Journey.GeoCoord (loadReferences, assocToCities, adjacency)
+import Journey.Connection (fromSegments, toOnDs)
+import Journey.Builder (buildAll)
 
--- | 
 main :: IO ()
 main = do
   [refsFile, ssimFile, beginDate, endDate] <- getArgs
@@ -26,9 +25,5 @@ main = do
   let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
       dateL = fromJust . toDate $ pack beginDate
       dateH = fromJust . toDate $ pack endDate
-
-  -- let (a,b) = join (***) (fromJust . toPort) ("NYC", "STL")
-  -- mapM_ (putStrLn . show) $ M.find (MkPOnD a b) segments
-  -- T.putStr . toLazyText . buildForOnD segments covs dateL $ join (***) (fromJust . toPort) ("LON", "DFW")
 
   T.putStr . toLazyText $ foldMap (buildAll segdb covs) [dateL..dateH]
