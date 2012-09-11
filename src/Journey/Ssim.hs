@@ -26,8 +26,9 @@ import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.LocalTime (timeOfDayToTime, makeTimeOfDayValid)
 
 import Journey.Types ( AirlineCode(..), LegPeriod(..), SegmentPeriod
-                     , SegmentData(..), Flight(..), Port(..), Dow(..)
-                     , PeriodBoundary, TimeVariation, ScheduleTime, OnD, segmentIdx)
+                     , SegmentData(..), segmentIdx
+                     , SegmentLeg(..), Flight(..), Port(..), Dow(..)
+                     , PeriodBoundary, TimeVariation, ScheduleTime, OnD)
 
 {-------------------------------------------------------------------------------
   SSIM data types
@@ -104,7 +105,7 @@ legPeriodP = do
             + (secondsToDiffTime . fromIntegral $ (advar - ddvar) * 86400)
   return $ LegPeriod flight period lsn
                      bpoint opoint
-                     dtime atime etime advar
+                     dtime atime etime ddvar advar
 
 -- | Parser for segment records.
 segmentP :: Parser SegmentData
@@ -304,10 +305,10 @@ flightSegments = join . combine
   where combine []         = []
         combine xs@(x:xs') = [ mkAssoc y | y <- xs ] : combine xs'
           where legX = lgLeg x
-                mkAssoc y = ((lpBoard legX, lpOff legY), map select legs)
+                mkAssoc y = ((lpBoard legX, lpOff legY), map mkLeg legs)
                   where legY = lgLeg y
                         legs = takeWhile (on (>=) (lpSequence . lgLeg) $ y) xs
-                        select l = (legL, map dDEI . filter ((==) idx . dIndex) $ segL)
+                        mkLeg l = MkSegmentLeg legL $ map dDEI . filter ((==) idx . dIndex) $ segL
                           where segL = lgSegments l
                                 legL = lgLeg l
                                 idx = segmentIdx (lpSequence legL) (lpSequence legY)

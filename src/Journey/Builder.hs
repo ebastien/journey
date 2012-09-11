@@ -12,8 +12,10 @@ import Data.Text.Format (build, left, Shown(..))
 import Data.Time.LocalTime (TimeOfDay(..), timeToTimeOfDay)
 import Data.Time.Calendar (Day, toGregorian)
 
-import Journey.Types ( Port, OnD, Path, ScheduleTime
-                     , Flight(..), LegPeriod(..), SegmentDate(..) )
+import Journey.Types ( Port, OnD, Path, ScheduleTime, SegmentPeriod
+                     , Flight(..), LegPeriod(..)
+                     , SegmentDate(..), sdDepartureTime, sdArrivalDate, sdArrivalTime
+                     , SegmentLeg(..) )
 import Journey.Route ( coveredOnDs, ondPaths, MetricSpace, PortCoverages )
 import Journey.Connection ( connections, OnDSegments )
 
@@ -71,7 +73,7 @@ buildSeg s = mconcat . intersperse (singleton ' ')
              , buildDate $ sdArrivalDate s
              , buildTime $ sdArrivalTime s
              ]
-  where l = fst . head $ sdSegment s
+  where l = slLeg . head $ sdSegment s
         f = lpFlight l
 
 -- | Build a representation of a flight.

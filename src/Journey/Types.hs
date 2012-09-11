@@ -15,8 +15,11 @@ module Journey.Types (
     , ScheduleTime
     , Flight(..)
     , LegPeriod(..)
+    , SegmentLeg(..)
     , SegmentPeriod
+    , spDepartureTime , spArrivalTime , spArrivalDateVariation, spElapsedTime
     , SegmentDate(..)
+    , sdDepartureTime, sdArrivalDate, sdArrivalTime
     , SegmentData(..)
     , SegmentDEI
     , segmentIdx
@@ -25,8 +28,8 @@ module Journey.Types (
 import Data.Word (Word8)
 import Data.Bits (testBit)
 import Data.Char (chr, ord)
-import Data.Time.Clock (DiffTime)
-import Data.Time.Calendar (Day)
+import Data.Time.Clock (DiffTime, secondsToDiffTime)
+import Data.Time.Calendar (Day, addDays)
 import Data.Time.Calendar.WeekDate (toWeekDate)
 
 {-------------------------------------------------------------------------------
@@ -120,6 +123,7 @@ data LegPeriod = LegPeriod { lpFlight :: Flight
                            , lpDepartureTime :: !ScheduleTime
                            , lpArrivalTime :: !ScheduleTime
                            , lpElapsedTime :: !TimeDuration
+                           , lpDepartureDateVariation :: !Int
                            , lpArrivalDateVariation :: !Int
                            } deriving Show
 
@@ -136,11 +140,40 @@ data SegmentData = SegmentData { dFlight :: Flight
 segmentIdx :: Int -> Int -> Int
 segmentIdx board off = off * 26 + board - 1
 
-type SegmentPeriod = [(LegPeriod, [SegmentDEI])]
+data SegmentLeg = MkSegmentLeg { slLeg :: LegPeriod
+                               , slDEIs :: [SegmentDEI]
+                               } deriving (Show)
+
+type SegmentPeriod = [SegmentLeg]
+
+spDepartureTime :: SegmentPeriod -> ScheduleTime
+spDepartureTime = lpDepartureTime . slLeg . head
+
+spArrivalTime :: SegmentPeriod -> ScheduleTime
+spArrivalTime = lpArrivalTime . slLeg . last
+
+spArrivalDateVariation :: SegmentPeriod -> Int
+spArrivalDateVariation = lpArrivalDateVariation . slLeg . last
+
+spElapsedTime :: SegmentPeriod -> TimeDuration
+spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail legs)
+  where legs = map slLeg s
+        cnx (a,b) = lpElapsedTime b
+                  + lpDepartureTime b - lpArrivalTime a
+                  + ( secondsToDiffTime . fromIntegral
+                    $ ( lpDepartureDateVariation b
+                      - lpArrivalDateVariation a ) * 86400 )
 
 data SegmentDate = MkSegmentDate { sdSegment :: SegmentPeriod
                                  , sdDepartureDate :: Day
-                                 , sdDepartureTime :: ScheduleTime
-                                 , sdArrivalDate :: Day
-                                 , sdArrivalTime :: ScheduleTime
                                  } deriving (Show)
+
+sdDepartureTime :: SegmentDate -> ScheduleTime
+sdDepartureTime = spDepartureTime . sdSegment
+
+sdArrivalDate :: SegmentDate -> Day
+sdArrivalDate s = addDays (fromIntegral . spArrivalDateVariation $ sdSegment s)
+                $ sdDepartureDate s
+
+sdArrivalTime :: SegmentDate -> ScheduleTime
+sdArrivalTime = spArrivalTime . sdSegment
