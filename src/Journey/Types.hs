@@ -20,7 +20,6 @@ module Journey.Types (
     , spDepartureTime , spArrivalTime , spArrivalDateVariation, spElapsedTime
     , SegmentDate(..)
     , sdDepartureTime, sdArrivalDate, sdArrivalTime
-    , SegmentData(..)
     , SegmentDEI
     , segmentIdx
     ) where
@@ -109,12 +108,14 @@ type ScheduleTime = DiffTime
   Schedule
 -------------------------------------------------------------------------------}
 
+-- | A flight period designator.
 data Flight = Flight { fAirline :: !AirlineCode
                      , fNumber :: !Int
                      , fSuffix :: !Char
                      , fVariation :: !Int
                      } deriving (Show, Eq)
 
+-- | A leg period.
 data LegPeriod = LegPeriod { lpFlight :: Flight
                            , lpPeriod :: !Period
                            , lpSequence :: !Int
@@ -127,23 +128,19 @@ data LegPeriod = LegPeriod { lpFlight :: Flight
                            , lpArrivalDateVariation :: !Int
                            } deriving Show
 
+-- | Segment data element.
 type SegmentDEI = Int
 
-data SegmentData = SegmentData { dFlight :: Flight
-                               , dIndex :: !Int
-                               , dBoard :: !Port
-                               , dOff :: !Port
-                               , dDEI :: !SegmentDEI
-                               } deriving Show
-
--- | Segment index from leg sequences
+-- | Segment index from leg sequences.
 segmentIdx :: Int -> Int -> Int
 segmentIdx board off = off * 26 + board - 1
 
+-- | The projection of a leg to a specific segment.
 data SegmentLeg = MkSegmentLeg { slLeg :: LegPeriod
                                , slDEIs :: [SegmentDEI]
                                } deriving (Show)
 
+-- | A segment as a sequence of legs periods.
 type SegmentPeriod = [SegmentLeg]
 
 spDepartureTime :: SegmentPeriod -> ScheduleTime
@@ -164,6 +161,7 @@ spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail
                     $ ( lpDepartureDateVariation b
                       - lpArrivalDateVariation a ) * 86400 )
 
+-- | A segment date.
 data SegmentDate = MkSegmentDate { sdSegment :: SegmentPeriod
                                  , sdDepartureDate :: Day
                                  } deriving (Show)
@@ -177,3 +175,4 @@ sdArrivalDate s = addDays (fromIntegral . spArrivalDateVariation $ sdSegment s)
 
 sdArrivalTime :: SegmentDate -> ScheduleTime
 sdArrivalTime = spArrivalTime . sdSegment
+

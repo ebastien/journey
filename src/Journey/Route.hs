@@ -1,8 +1,7 @@
 module Journey.Route (
       PortMap
     , Distance
-    , MetricSpace
-    , distance
+    , MetricSpace(..)
     , Edge(..)
     , PortAdjacencies
     , PortCoverages

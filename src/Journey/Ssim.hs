@@ -25,9 +25,8 @@ import Data.Time.Clock (secondsToDiffTime)
 import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.LocalTime (timeOfDayToTime, makeTimeOfDayValid)
 
-import Journey.Types ( AirlineCode(..), LegPeriod(..), SegmentPeriod
-                     , SegmentData(..), segmentIdx
-                     , SegmentLeg(..), Flight(..), Port(..), Dow(..)
+import Journey.Types ( AirlineCode(..), LegPeriod(..), SegmentPeriod, SegmentDEI
+                     , segmentIdx, SegmentLeg(..), Flight(..), Port(..), Dow(..)
                      , PeriodBoundary, TimeVariation, ScheduleTime, OnD)
 
 {-------------------------------------------------------------------------------
@@ -38,6 +37,14 @@ data Header = Header deriving Show
 
 data Carrier = Carrier { cAirline :: !AirlineCode 
                        } deriving Show
+
+-- | Segment data record.
+data SegmentData = SegmentData { dFlight :: Flight
+                               , dIndex :: !Int
+                               , dBoard :: !Port
+                               , dOff :: !Port
+                               , dDEI :: !SegmentDEI
+                               } deriving Show
 
 data LegGroup = LegGroup { lgLeg :: LegPeriod
                          , lgSegments :: [SegmentData] } deriving Show
