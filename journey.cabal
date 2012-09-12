@@ -12,7 +12,9 @@ Build-Type:    Simple
 Tested-With:   GHC ==7.4.1
 
 Library
-  Hs-source-dirs: src
+  Hs-source-dirs:   src
+  Default-Language: Haskell2010
+  GHC-Options:      -O2
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers
@@ -25,12 +27,12 @@ Library
   Other-Modules:
     Journey.EnumMap,
     Journey.Types
-  GHC-Options: -O2
-  Default-Language: Haskell2010
 
-Executable journey
-  Hs-source-dirs:  src
-  Main-is:         Main.hs
+Executable itineraries
+  Hs-source-dirs:   src
+  Main-is:          Main.hs
+  Default-Language: Haskell2010
+  GHC-Options: -O2
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers
@@ -42,5 +44,13 @@ Executable journey
     Journey.Builder
     Journey.EnumMap,
     Journey.Types
-  GHC-Options: -O2
+
+Test-Suite tests
+  Hs-source-dirs:   src, testsuite/tests
+  Type:             exitcode-stdio-1.0
+  Main-is:          Tests.hs
   Default-Language: Haskell2010
+  Build-Depends:
+    base, time, bytestring, bytestring-lexing, attoparsec,
+    vector, text, text-format, containers, test-framework,
+    QuickCheck
