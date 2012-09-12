@@ -53,4 +53,4 @@ Test-Suite tests
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, test-framework,
-    QuickCheck
+    QuickCheck, test-framework-quickcheck2

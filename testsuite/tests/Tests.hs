@@ -1,13 +1,15 @@
 module Main where
 
-import Test.Framework (defaultMain, testGroup, Test)
+import Test.Framework (defaultMain, testGroup)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
 
-import Journey.TestDecisionTree
+import qualified Journey.TestDecisionTree as DT
 
 main :: IO ()
 main = defaultMain tests
 
-tests :: [Test]
-tests = [
-        testGroup "QuickCheck Journey.DecisionTree" []
+tests = [ testGroup "QuickCheck Journey.DecisionTree" [
+            testProperty "retrieve" DT.prop_retrieve
+          ]
         ]
+
