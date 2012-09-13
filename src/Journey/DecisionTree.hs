@@ -4,57 +4,66 @@ module Journey.DecisionTree (
     , lookupWith
     , lookup
     , fromList
+    , Tree
+    , Rule
     ) where
 
 import qualified Data.Map as M
 import Data.Monoid (Monoid, mappend, mempty)
 import Prelude hiding (lookup)
 
-import Data.Char (ord, chr)
-
-data Tree a b = Node (Tree a b) (M.Map b (Tree a b))
+-- | A decision tree.
+data Tree a b = Node (Tree a b) (M.Map b (Tree a b)) a
               | Leaf a
               | Empty
                 deriving (Show)
 
-type Attribute a b = (a -> Maybe b)
+-- | A classification rule.
+type Rule b = [Maybe b]
 
-type Rule a b = [Attribute a b]
-
-data DecisionTree a b = MkDecisionTree (Rule a b) (Tree a b)
-
-instance (Show a, Show b) => Show (DecisionTree a b) where
-  show (MkDecisionTree r t) = show t
-
-insert :: (Ord b) => DecisionTree a b -> a -> DecisionTree a b
-insert (MkDecisionTree rules tree) item = MkDecisionTree rules (walk rules tree)
+-- | Insert an item into a tree by following a classification rule.
+insert :: (Ord b, Monoid a) => Tree a b
+                            -> (Rule b, a)
+                            -> Tree a b
+insert tree (rule, item) = walk rule tree
   where walk []     _ = Leaf item
-        walk (r:rs) t = case r item of
+        walk (r:rs) t = case r of
           Nothing -> case t of
-                       Empty    -> Node (walk rs Empty) M.empty
-                       Node d m -> Node (walk rs d) m
+                       Empty      -> Node (walk rs Empty) M.empty item
+                       Node d m l -> let l' = l `mappend` item 
+                                     in Node (walk rs d) m l'
           Just c  -> case t of
-                       Empty    -> Node Empty $ M.singleton c (walk rs Empty)
-                       Node d m -> let t' = M.findWithDefault Empty c m
-                                       t'' = walk rs t'
-                                       m' = M.insert c t'' m
-                                   in Node d m'
+                       Empty      -> Node Empty (M.singleton c (walk rs Empty)) item
+                       Node d m l -> let t'  = M.findWithDefault Empty c m
+                                         t'' = walk rs t'
+                                         m'  = M.insert c t'' m
+                                         l'  = l `mappend` item
+                                     in Node d m' l'
 
-lookupWith :: (Ord b, Monoid m) => (a -> m) -> DecisionTree a b -> a -> m
-lookupWith f (MkDecisionTree rules tree) item = walk rules tree
-  where walk _      Empty      = mempty
-        walk []     (Leaf i)   = f i
-        walk (r:rs) (Node d m) = left `mappend` right
-          where left  = walk rs d
-                right = case r item of
-                          Nothing -> mempty
-                          Just c  -> walk rs $ M.findWithDefault Empty c m
+-- | Lookup items from a tree by following a classification rule.
+lookupWith :: (Ord b, Monoid m) => (a -> m)
+                                -> (a -> Bool)
+                                -> Tree a b
+                                -> Rule b
+                                -> m
+lookupWith mmap pred tree rule = walk rule tree
+  where walk _      (Leaf i)              = mmap i
+        walk []     (Node d _ l) | pred l = walk [] d
+        walk (r:rs) (Node d m l) | pred l = case r of
+                                              Nothing -> left
+                                              Just c  -> mappend left $ right c
+          where left    = walk rs d
+                right c = walk rs $ M.findWithDefault Empty c m
+        walk _ _ = mempty
 
-lookup :: (Ord b) => DecisionTree a b -> a -> [a]
-lookup = lookupWith (:[])
+-- | Lookup specialized to return the list of all matching items.
+lookup :: (Ord b) => Tree a b -> Rule b -> [a]
+lookup = lookupWith (:[]) $ const True
 
-empty :: Rule a b -> DecisionTree a b
-empty r = MkDecisionTree r Empty
+-- | The empty decision tree.
+empty :: Tree a b
+empty = Empty
 
-fromList :: (Ord b) => Rule a b -> [a] -> DecisionTree a b
-fromList r = foldl insert $ empty r
+-- | Create a decision tree from a list of rules and items associations.
+fromList :: (Ord b, Monoid a) => [(Rule b, a)] -> Tree a b
+fromList = foldl insert Empty

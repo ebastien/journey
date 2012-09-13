@@ -3,13 +3,13 @@ module Main where
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
-import qualified Journey.TestDecisionTree as DT
+import qualified Journey.Tests.MinIntTree as T
 
 main :: IO ()
 main = defaultMain tests
 
-tests = [ testGroup "QuickCheck Journey.DecisionTree" [
-            testProperty "retrieve" DT.prop_retrieve
+tests = [ testGroup "QuickCheck MinIntTree" [
+            testProperty "retrieve" T.prop_retrieve
           ]
         ]
 
