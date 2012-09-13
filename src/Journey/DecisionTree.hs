@@ -30,14 +30,14 @@ insert tree (rule, item) = walk rule tree
         walk (r:rs) t = case r of
           Nothing -> case t of
                        Empty      -> Node (walk rs Empty) M.empty item
-                       Node d m l -> let l' = l `mappend` item 
+                       Node d m l -> let l' = item `mappend` l
                                      in Node (walk rs d) m l'
           Just c  -> case t of
                        Empty      -> Node Empty (M.singleton c (walk rs Empty)) item
                        Node d m l -> let t'  = M.findWithDefault Empty c m
                                          t'' = walk rs t'
                                          m'  = M.insert c t'' m
-                                         l'  = l `mappend` item
+                                         l'  = item `mappend` l
                                      in Node d m' l'
 
 -- | Lookup items from a tree by following a classification rule.

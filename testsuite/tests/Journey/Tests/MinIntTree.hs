@@ -7,8 +7,9 @@ attr s n = case s !! n of
              ' ' -> Nothing
              c   -> Just c
 
-prop_retrieve x = T.lookup t r == [n]
-  where t = T.fromList [(r, n)]
+prop_retrieve x = T.lookup t r == i
+  where t = T.fromList [(r, i)]
         r = map (attr x) . take n $ [0..]
         n = length x
+        i = (n, n)
 
