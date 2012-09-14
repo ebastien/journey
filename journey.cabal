@@ -26,7 +26,10 @@ Library
     Journey.Builder
   Other-Modules:
     Journey.EnumMap,
-    Journey.Types
+    Journey.Types,
+    Journey.DecisionTree,
+    Journey.MCTTree,
+    Journey.MCT
 
 Executable itineraries
   Hs-source-dirs:   src
@@ -43,7 +46,10 @@ Executable itineraries
     Journey.Connection,
     Journey.Builder
     Journey.EnumMap,
-    Journey.Types
+    Journey.Types,
+    Journey.DecisionTree,
+    Journey.MCTTree,
+    Journey.MCT
 
 Test-Suite tests
   Hs-source-dirs:   src, testsuite/tests

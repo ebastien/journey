@@ -1,1 +1,1 @@
-module Journey.MCT () where
+module Journey.MCT where
