@@ -1,6 +1,10 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Journey.MCTTree (
     lookup
-  , empty
   , fromList
   , MCTTree
   , MCT(..)
@@ -8,6 +12,8 @@ module Journey.MCTTree (
   ) where
 
 import Data.Monoid (Monoid(..))
+import qualified Data.Map as M
+import qualified Data.IntMap as IM
 import Prelude hiding (lookup)
 
 import qualified Journey.DecisionTree as DT
@@ -42,20 +48,39 @@ instance Monoid MaxRank where
                                               | otherwise = MaxRank (b, y)
 
 -- | A decision tree of minimum Int values.
-type MCTTree b = DT.Tree MinMCT b
+type MCTTree = DT.RootTree MinMCT
 
-lookup :: (Ord b) => MCTTree b -> DT.Rule b -> MCT -> Maybe Item
-lookup t r k = let i@(_, x) = getMaxRank $ DT.lookupWith l p t r
-               in if x == minBound; then Nothing; else Just i
+lookup :: MCTTree -> (DT.Rule, Item) -> MCT -> Maybe Item
+lookup t (r, i) k = let i@(_, x) = getMaxRank $ DT.lookupWith l p t (r, MinMCT i)
+                    in if x == minBound; then Nothing; else Just i
   where l (MinMCT i)      = MaxRank i
         p (MinMCT (a, _)) = k > a
 
--- | The empty decision tree.
-empty :: MCTTree b
-empty = DT.empty
+type Tree = DT.Tree Item
+
+instance DT.StoreAttribute Item Int where
+  newtype Store Item Int = MkStoreInt (IM.IntMap Tree)
+  empty = MkStoreInt IM.empty
+  store d k (MkStoreInt s) c = let k' = getMCT $ fst k
+                                   t = IM.findWithDefault d k' s
+                               in MkStoreInt $ IM.insert k' (c t) s
+  unstore d k (MkStoreInt s) = let k' = getMCT $ fst k
+                               in IM.findWithDefault d k' s
+
+instance DT.StoreAttribute Item Double where
+  newtype Store Item Double = MkStoreDouble (M.Map Double Tree)
+  empty = MkStoreDouble M.empty
+  store d k (MkStoreDouble s) c = let k' = fromIntegral . getMCT $ fst k
+                                      t = M.findWithDefault d k' s
+                                  in MkStoreDouble $ M.insert k' (c t) s
+  unstore d k (MkStoreDouble s) = let k' = fromIntegral . getMCT $ fst k
+                                  in M.findWithDefault d k' s
+
+s1 = DT.MkStorable (DT.empty :: DT.Store Item Int)
+s2 = DT.MkStorable (DT.empty :: DT.Store Item Double)
 
 -- | Create a decision tree from a list of rules and items associations.
-fromList :: (Ord b) => [(DT.Rule b, Item)] -> MCTTree b
-fromList xs = DT.fromList $ map m xs
+fromList :: [(DT.Rule, Item)] -> MCTTree
+fromList xs = DT.fromList [] $ map m xs
   where m (r, i) = (r, MinMCT i)
 

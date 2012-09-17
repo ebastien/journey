@@ -8,24 +8,29 @@ module Journey.DecisionTree (
     , lookup
     , fromList
     , Tree
+    , RootTree
+    , StoredTree
     , Rule
+    , StoreAttribute(..)
+    , Storable(..)
     ) where
 
 import qualified Data.Map as M
 import Data.Monoid (Monoid, mappend, mempty)
 import Prelude hiding (lookup)
 
-data Storable k v = forall a . StoreAttribute k a => MkStorable (Store a v)
-
-instance Show (Storable k v) where
+instance Show (Storable k) where
   show _ = "<Storable>"
 
 class StoreAttribute k a where
-  data Store a :: * -> *
-  store :: v -> k -> Store a v -> (v -> v) -> Storable k v
-  unstore :: v -> k -> Store a v -> v
+  data Store k a :: *
+  empty :: Store k a
+  store :: Tree k -> k -> Store k a -> (Tree k -> Tree k) -> Store k a
+  unstore :: Tree k -> k -> Store k a -> Tree k
 
-type StoredTree a = Storable a (Tree a)
+data Storable k = forall a . StoreAttribute k a => MkStorable (Store k a)
+
+type StoredTree a = Storable a
 
 data RootTree a = RootTree [StoredTree a] (Tree a)
 
@@ -47,10 +52,10 @@ insert (RootTree defs tree) (rule, item) = RootTree defs $ walk (zip rule defs) 
         walk ((active, MkStorable s):rs) t
           | active = case t of
               Empty                   -> let m' = store Empty item s (walk rs)
-                                         in Node Empty m' item
+                                         in Node Empty (MkStorable m') item
               Node d (MkStorable m) l -> let m' = store Empty item m (walk rs)
                                              l' = item `mappend` l
-                                         in Node d m' l'
+                                         in Node d (MkStorable m') l'
           | otherwise = case t of
               Empty      -> Node (walk rs Empty) (MkStorable s) item
               Node d m l -> let l' = item `mappend` l
