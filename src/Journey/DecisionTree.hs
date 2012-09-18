@@ -16,6 +16,7 @@ module Journey.DecisionTree (
 
 import qualified Data.Map as M
 import Data.Monoid (Monoid, mappend, mempty)
+import Data.Foldable (foldMap)
 import Prelude hiding (lookup)
 
 -- | The class of attributes 'a' on elements 'k'.
@@ -57,20 +58,24 @@ data RootTree k = RootTree [Storable k] (Tree k)
 
 -- | An intermediate decision tree.
 data Tree k = Node (Storable k) k
-            | Leaf k
+            | Leaf [k]
             | Empty
 
 -- | Insert an element into a decision tree.
 insert :: (Monoid k) => RootTree k -> k -> RootTree k
-insert (RootTree defs tree) item = RootTree defs $ walk defs tree
-  where walk []                _ = Leaf item
+insert (RootTree defs tree) rule = RootTree defs $ walk defs tree
+  where walk [] t =
+          let rs = case t of
+                     Leaf xs -> xs
+                     Empty   -> []
+          in Leaf $ rule : rs
         walk (MkStorable d:ds) t =
-          let (z, l') = case t of
-                          Empty                 -> ( MkStorable . store d item
-                                                   , item )
-                          Node (MkStorable s) l -> ( MkStorable . store s item
-                                                   , item `mappend` l )
-          in Node (z $ walk ds) l'
+          let (z, r') = case t of
+                          Empty                 -> ( MkStorable . store d rule
+                                                   , rule )
+                          Node (MkStorable s) r -> ( MkStorable . store s rule
+                                                   , rule `mappend` r )
+          in Node (z $ walk ds) r'
 
 -- | Lookup matching elements in a tree.
 lookupWith :: (Monoid m) => (k -> m)
@@ -78,9 +83,9 @@ lookupWith :: (Monoid m) => (k -> m)
                          -> RootTree k
                          -> k
                          -> m
-lookupWith mmap pred (RootTree _ tree) item = walk tree
-  where walk (Leaf i)                         = mmap i
-        walk (Node (MkStorable s) l) | pred l = fetch s item walk
+lookupWith mlift pred (RootTree _ tree) rule = walk tree
+  where walk (Leaf xs)                        = foldMap mlift $ filter pred xs
+        walk (Node (MkStorable s) l) | pred l = fetch s rule walk
         walk _                                = mempty
 
 -- | Returns the list of all matching elements.
