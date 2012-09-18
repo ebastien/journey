@@ -4,69 +4,103 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Journey.MCTTree (
-    lookup
+    pruneLookup
   , fromList
   , MCTTree
   , MCT(..)
+  , undefMCT
   , Rank(..)
+  , undefRank
+  , Item(..)
   ) where
 
 import Data.Monoid (Monoid(..))
+import Data.Maybe (isJust, fromJust)
 import qualified Data.Map as M
 import qualified Data.IntMap as IM
 import Prelude hiding (lookup)
 
 import qualified Journey.DecisionTree as DT
 
-newtype MCT = MCT { getMCT :: Int }
-                  deriving (Eq, Ord, Bounded)
-
-maxMCT :: MCT
-maxMCT = MCT maxBound
-
-newtype Rank = Rank { getRank :: Int }
+newtype MCT = MkMCT { getMCT :: Int }
                     deriving (Eq, Ord, Bounded)
 
-minRank :: Rank
-minRank = Rank minBound
+undefMCT :: MCT
+undefMCT = MkMCT maxBound
 
--- | 
-type Item = (MCT, Rank)
+newtype Rank = MkRank { getRank :: Int }
+                      deriving (Eq, Ord, Bounded)
+
+undefRank :: Rank
+undefRank = MkRank minBound
+
+data Item = MkItem { iMCT :: MCT
+                   , iRank :: Rank
+                   , iAttr1 :: Maybe Int }
+                   deriving (Eq)
 
 newtype MinMCT = MinMCT { getMinMCT :: Item }
 
 instance Monoid MinMCT where
-  mempty = MinMCT (maxMCT, undefined)
-  (MinMCT (a, x)) `mappend` (MinMCT (b, y)) | a < b     = MinMCT (a, x)
-                                            | otherwise = MinMCT (b, y)
+  mempty = MinMCT $ MkItem undefMCT undefined undefined
+  mappend i@(MinMCT (MkItem { iMCT = a }))
+          j@(MinMCT (MkItem { iMCT = b })) | a < b     = i
+                                           | otherwise = j
 
 newtype MaxRank = MaxRank { getMaxRank :: Item }
 
 instance Monoid MaxRank where
-  mempty = MaxRank (undefined, minRank)
-  (MaxRank (a, x)) `mappend` (MaxRank (b, y)) | x > y     = MaxRank (a, x)
-                                              | otherwise = MaxRank (b, y)
+  mempty = MaxRank $ MkItem undefined undefRank undefined
+  mappend i@(MaxRank (MkItem { iRank = x }))
+          j@(MaxRank (MkItem { iRank = y })) | x > y     = i
+                                             | otherwise = j
 
--- | A decision tree of minimum Int values.
+-- | A decision tree of minimum connecting times.
 type MCTTree = DT.RootTree MinMCT
 
-lookup :: MCTTree -> (DT.Rule, Item) -> MCT -> Maybe Item
-lookup t (r, i) k = let i@(_, x) = getMaxRank $ DT.lookupWith l p t (r, MinMCT i)
-                    in if x == minBound; then Nothing; else Just i
-  where l (MinMCT i)      = MaxRank i
-        p (MinMCT (a, _)) = k > a
+-- | The 'pruneLookup' returns the matching element with the highest rank
+--   or nothing, discarding branches by minimum MCT.
+pruneLookup :: MCTTree -> Item -> Maybe Item
+pruneLookup t i = if notfound; then Nothing; else Just result
+  where result = getMaxRank $ DT.lookupWith mlift keep t (MinMCT i)
+        notfound = iRank result == undefRank
+        mlift (MinMCT j) = MaxRank j
+        keep (MinMCT (MkItem { iMCT = a })) = (iMCT i) >= a
 
-type Tree = DT.Tree Item
+-- | An intermediate decision tree of minimum connecting times.
+type Tree = DT.Tree MinMCT
 
-instance DT.StoreAttribute Item Int where
-  newtype Store Item Int = MkStoreInt (IM.IntMap Tree)
-  empty = MkStoreInt IM.empty
-  store d k (MkStoreInt s) c = let k' = getMCT $ fst k
-                                   t = IM.findWithDefault d k' s
-                               in MkStoreInt $ IM.insert k' (c t) s
-  unstore d k (MkStoreInt s) = let k' = getMCT $ fst k
-                               in IM.findWithDefault d k' s
+-- | A container for Int attribues.
+type IntStore = IM.IntMap Tree
 
+emptyInt :: IntStore
+emptyInt = IM.empty
+
+storeInt :: IntStore -> Int -> (Tree -> Tree) -> IntStore
+storeInt s k c = IM.insertWith f k (c DT.Empty) s
+  where f _ = c
+
+unstoreInt :: IntStore -> Int -> Tree
+unstoreInt s k = IM.findWithDefault DT.Empty k s
+
+existAttr1 :: MinMCT -> Bool
+existAttr1 = isJust . iAttr1 . getMinMCT
+
+keyAttr1 :: MinMCT -> Int
+keyAttr1 = fromJust . iAttr1 . getMinMCT
+
+data Attr1
+
+instance DT.Attribute MinMCT Attr1 where
+  data Store_ MinMCT Attr1 = MkStoreAttr1 IntStore
+  empty_ = MkStoreAttr1 emptyInt
+  store_ (MkStoreAttr1 s) k c = MkStoreAttr1 $ storeInt s (keyAttr1 k) c
+  fetch_ (MkStoreAttr1 s) k = unstoreInt s (keyAttr1 k)
+  exist_ _ = existAttr1
+
+s1 = DT.MkStorable (DT.empty :: DT.Store MinMCT Attr1)
+
+{-
 instance DT.StoreAttribute Item Double where
   newtype Store Item Double = MkStoreDouble (M.Map Double Tree)
   empty = MkStoreDouble M.empty
@@ -76,11 +110,10 @@ instance DT.StoreAttribute Item Double where
   unstore d k (MkStoreDouble s) = let k' = fromIntegral . getMCT $ fst k
                                   in M.findWithDefault d k' s
 
-s1 = DT.MkStorable (DT.empty :: DT.Store Item Int)
+
 s2 = DT.MkStorable (DT.empty :: DT.Store Item Double)
+-}
 
 -- | Create a decision tree from a list of rules and items associations.
-fromList :: [(DT.Rule, Item)] -> MCTTree
-fromList xs = DT.fromList [] $ map m xs
-  where m (r, i) = (r, MinMCT i)
-
+fromList :: [Item] -> MCTTree
+fromList xs = DT.fromList [s1] $ map MinMCT xs

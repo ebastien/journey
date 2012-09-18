@@ -9,7 +9,7 @@ main :: IO ()
 main = defaultMain tests
 
 tests = [ testGroup "QuickCheck MCTTree" [
-            testProperty "retrieve" T.prop_retrieve
+            testProperty "lookup" T.prop_lookup
           ]
         ]
 

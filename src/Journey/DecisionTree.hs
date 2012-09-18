@@ -7,81 +7,86 @@ module Journey.DecisionTree (
     , lookupWith
     , lookup
     , fromList
-    , Tree
+    , Tree(..)
     , RootTree
-    , StoredTree
-    , Rule
-    , StoreAttribute(..)
+    , Attribute(..)
     , Storable(..)
+    , Store(..)
     ) where
 
 import qualified Data.Map as M
 import Data.Monoid (Monoid, mappend, mempty)
 import Prelude hiding (lookup)
 
-instance Show (Storable k) where
-  show _ = "<Storable>"
-
-class StoreAttribute k a where
-  data Store k a :: *
+-- | The class of attributes 'a' on elements 'k'.
+class Attribute k a where
+  -- | The internal container.
+  data Store_ k a :: *
+  
+  empty_ :: Store_ k a
+  store_ :: Store_ k a -> k -> (Tree k -> Tree k) -> Store_ k a
+  fetch_ :: Store_ k a -> k -> Tree k
+  exist_ :: Store_ k a -> k -> Bool
+  
+  -- | An empty attributes container.
   empty :: Store k a
-  store :: Tree k -> k -> Store k a -> (Tree k -> Tree k) -> Store k a
-  unstore :: Tree k -> k -> Store k a -> Tree k
+  empty = MkStore Empty empty_
 
-data Storable k = forall a . StoreAttribute k a => MkStorable (Store k a)
+  -- | The 'store' function inserts an optional attribute to the container.
+  store :: Store k a -> k -> (Tree k -> Tree k) -> Store k a
+  store (MkStore w s) k c = MkStore w' s'
+    where (w', s') = if exist_ s k
+                       then (w  , store_ s k c)
+                       else (c w, s)
+  
+  -- | The 'fetch' function retrieves an optional attribute from the container.
+  fetch :: Monoid m => Store k a -> k -> (Tree k -> m) -> m
+  fetch (MkStore w s) k c = (c w) `mappend` m
+    where m = if exist_ s k
+                then c $ fetch_ s k
+                else mempty
 
-type StoredTree a = Storable a
+-- | A container for optional attributes.
+data Store k a = MkStore (Tree k) (Store_ k a)
 
-data RootTree a = RootTree [StoredTree a] (Tree a)
+-- | An existential container for attributes.
+data Storable k = forall a . Attribute k a => MkStorable (Store k a)
 
--- | A decision tree.
-data Tree a = Node (Tree a) (StoredTree a) a
-            | Leaf a
+-- | A complete decision tree.
+data RootTree k = RootTree [Storable k] (Tree k)
+
+-- | An intermediate decision tree.
+data Tree k = Node (Storable k) k
+            | Leaf k
             | Empty
-              deriving (Show)
 
--- | A classification rule.
-type Rule = [Bool]
+-- | Insert an element into a decision tree.
+insert :: (Monoid k) => RootTree k -> k -> RootTree k
+insert (RootTree defs tree) item = RootTree defs $ walk defs tree
+  where walk []                _ = Leaf item
+        walk (MkStorable d:ds) t =
+          let (z, l') = case t of
+                          Empty                 -> ( MkStorable . store d item
+                                                   , item )
+                          Node (MkStorable s) l -> ( MkStorable . store s item
+                                                   , item `mappend` l )
+          in Node (z $ walk ds) l'
 
--- | Insert an item into a tree by following a classification rule.
-insert :: (Monoid a) => RootTree a
-                     -> (Rule, a)
-                     -> RootTree a
-insert (RootTree defs tree) (rule, item) = RootTree defs $ walk (zip rule defs) tree
-  where walk [] _ = Leaf item
-        walk ((active, MkStorable s):rs) t
-          | active = case t of
-              Empty                   -> let m' = store Empty item s (walk rs)
-                                         in Node Empty (MkStorable m') item
-              Node d (MkStorable m) l -> let m' = store Empty item m (walk rs)
-                                             l' = item `mappend` l
-                                         in Node d (MkStorable m') l'
-          | otherwise = case t of
-              Empty      -> Node (walk rs Empty) (MkStorable s) item
-              Node d m l -> let l' = item `mappend` l
-                            in Node (walk rs d) m l'
-
--- | Lookup items from a tree by following a classification rule.
-lookupWith :: (Monoid m) => (a -> m)
-                         -> (a -> Bool)
-                         -> RootTree a
-                         -> (Rule, a)
+-- | Lookup matching elements in a tree.
+lookupWith :: (Monoid m) => (k -> m)
+                         -> (k -> Bool)
+                         -> RootTree k
+                         -> k
                          -> m
-lookupWith mmap pred (RootTree _ tree) (rule, item) = walk rule tree
-  where walk _           (Leaf i)                           = mmap i
-        walk []          (Node d _ l)              | pred l = walk [] d
-        walk (active:rs) (Node d (MkStorable m) l) | pred l =
-          if active
-            then mappend left $ right
-            else left
-          where left  = walk rs d
-                right = walk rs $ unstore Empty item m
-        walk _ _ = mempty
+lookupWith mmap pred (RootTree _ tree) item = walk tree
+  where walk (Leaf i)                         = mmap i
+        walk (Node (MkStorable s) l) | pred l = fetch s item walk
+        walk _                                = mempty
 
--- | Lookup specialized to return the list of all matching items.
-lookup :: RootTree a -> (Rule, a) -> [a]
+-- | Returns the list of all matching elements.
+lookup :: RootTree k -> k -> [k]
 lookup = lookupWith (:[]) $ const True
 
--- | Create a decision tree from a list of rules and items associations.
-fromList :: (Monoid a) => [StoredTree a] -> [(Rule, a)] -> RootTree a
-fromList defaults = foldl insert $ RootTree defaults Empty
+-- | Creates a decision tree from a structure of attributes and a list of elements.
+fromList :: (Monoid k) => [Storable k] -> [k] -> RootTree k
+fromList defs = foldl insert $ RootTree defs Empty
