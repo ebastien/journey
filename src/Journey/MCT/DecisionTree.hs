@@ -1,14 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 
-module Journey.DecisionTree (
-      insert
-    , lookupWith
+module Journey.MCT.DecisionTree (
+      lookupWith
     , lookup
     , fromList
     , Tree(..)
-    , RootTree
     , Attribute(..)
     , Storable(..)
     , Store(..)
@@ -20,16 +19,17 @@ import Data.Foldable (foldMap)
 import Prelude hiding (lookup)
 
 -- | The class of attributes 'a' on elements 'k'.
-class Attribute k a where
+class (Show k) => Attribute k a where
   -- | The internal container.
   data Store_ k a :: *
   
   empty_ :: Store_ k a
   store_ :: Store_ k a -> k -> (Tree k -> Tree k) -> Store_ k a
-  fetch_ :: Store_ k a -> k -> Tree k
+  fetch_ :: Store_ k a -> k -> [Tree k]
   exist_ :: Store_ k a -> k -> Bool
+  showStore_ :: Store_ k a -> String
   
-  -- | An empty attributes container.
+  -- | An empty container.
   empty :: Store k a
   empty = MkStore Empty empty_
 
@@ -44,26 +44,30 @@ class Attribute k a where
   fetch :: Monoid m => Store k a -> k -> (Tree k -> m) -> m
   fetch (MkStore w s) k c = (c w) `mappend` m
     where m = if exist_ s k
-                then c $ fetch_ s k
+                then foldMap c $ fetch_ s k
                 else mempty
 
--- | A container for optional attributes.
+  showStore :: Store k a -> String
+  showStore (MkStore t s) = "MkStore {" ++ show t ++ " " ++ showStore_ s ++ "}"
+
+-- | A container for optional attributes 'a' on elements 'k'.
 data Store k a = MkStore (Tree k) (Store_ k a)
 
--- | An existential container for attributes.
+-- | An existential container for elements 'k'.
 data Storable k = forall a . Attribute k a => MkStorable (Store k a)
 
--- | A complete decision tree.
-data RootTree k = RootTree [Storable k] (Tree k)
+instance Show (Storable k) where
+  show (MkStorable s) = showStore s
 
--- | An intermediate decision tree.
+-- | A decision tree.
 data Tree k = Node (Storable k) k
             | Leaf [k]
             | Empty
+            deriving (Show)
 
 -- | Insert an element into a decision tree.
-insert :: (Monoid k) => RootTree k -> k -> RootTree k
-insert (RootTree defs tree) rule = RootTree defs $ walk defs tree
+insert :: (Monoid k) => [Storable k] -> Tree k -> k -> Tree k
+insert defs tree rule = walk defs tree
   where walk [] t =
           let rs = case t of
                      Leaf xs -> xs
@@ -80,18 +84,18 @@ insert (RootTree defs tree) rule = RootTree defs $ walk defs tree
 -- | Lookup matching elements in a tree.
 lookupWith :: (Monoid m) => (k -> m)
                          -> (k -> Bool)
-                         -> RootTree k
+                         -> Tree k
                          -> k
                          -> m
-lookupWith mlift pred (RootTree _ tree) rule = walk tree
+lookupWith mlift pred tree rule = walk tree
   where walk (Leaf xs)                        = foldMap mlift $ filter pred xs
         walk (Node (MkStorable s) l) | pred l = fetch s rule walk
         walk _                                = mempty
 
 -- | Returns the list of all matching elements.
-lookup :: RootTree k -> k -> [k]
+lookup :: Tree k -> k -> [k]
 lookup = lookupWith (:[]) $ const True
 
 -- | Creates a decision tree from a structure of attributes and a list of elements.
-fromList :: (Monoid k) => [Storable k] -> [k] -> RootTree k
-fromList defs = foldl insert $ RootTree defs Empty
+fromList :: (Monoid k) => [Storable k] -> [k] -> Tree k
+fromList defs = foldl (insert defs) Empty

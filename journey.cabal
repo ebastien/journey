@@ -17,7 +17,7 @@ Library
   GHC-Options:      -O2
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
-    vector, text, text-format, containers
+    vector, text, text-format, containers, IntervalMap
   Exposed-Modules:
     Journey.Ssim,
     Journey.Route,
@@ -27,9 +27,10 @@ Library
   Other-Modules:
     Journey.EnumMap,
     Journey.Types,
-    Journey.DecisionTree,
-    Journey.MCTTree,
-    Journey.MCT
+    Journey.MCT.DecisionTree,
+    Journey.MCT.Rule,
+    Journey.MCT.Tree,
+    Journey.MCT.Attributes
 
 Executable itineraries
   Hs-source-dirs:   src
@@ -38,7 +39,7 @@ Executable itineraries
   GHC-Options: -O2
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
-    vector, text, text-format, containers
+    vector, text, text-format, containers, IntervalMap
   Other-Modules:
     Journey.Ssim,
     Journey.Route,
@@ -47,9 +48,10 @@ Executable itineraries
     Journey.Builder
     Journey.EnumMap,
     Journey.Types,
-    Journey.DecisionTree,
-    Journey.MCTTree,
-    Journey.MCT
+    Journey.MCT.DecisionTree,
+    Journey.MCT.Rule,
+    Journey.MCT.Tree,
+    Journey.MCT.Attributes
 
 Test-Suite tests
   Hs-source-dirs:   src, testsuite/tests
@@ -58,5 +60,5 @@ Test-Suite tests
   Default-Language: Haskell2010
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
-    vector, text, text-format, containers, test-framework,
-    QuickCheck, test-framework-quickcheck2
+    vector, text, text-format, containers, IntervalMap,
+    test-framework, QuickCheck, test-framework-quickcheck2
