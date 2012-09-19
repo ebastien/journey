@@ -19,16 +19,15 @@ import Data.Foldable (foldMap)
 import Prelude hiding (lookup)
 
 -- | The class of attributes 'a' on elements 'k'.
-class (Show k) => Attribute k a where
+class Show (Store_ k a) => Attribute k a where
   -- | The internal container.
   data Store_ k a :: *
-  
+
   empty_ :: Store_ k a
   store_ :: Store_ k a -> k -> (Tree k -> Tree k) -> Store_ k a
   fetch_ :: Store_ k a -> k -> [Tree k]
   exist_ :: Store_ k a -> k -> Bool
-  showStore_ :: Store_ k a -> String
-  
+
   -- | An empty container.
   empty :: Store k a
   empty = MkStore Empty empty_
@@ -39,7 +38,7 @@ class (Show k) => Attribute k a where
     where (w', s') = if exist_ s k
                        then (w  , store_ s k c)
                        else (c w, s)
-  
+
   -- | The 'fetch' function retrieves an optional attribute from the container.
   fetch :: Monoid m => Store k a -> k -> (Tree k -> m) -> m
   fetch (MkStore w s) k c = (c w) `mappend` m
@@ -47,17 +46,17 @@ class (Show k) => Attribute k a where
                 then foldMap c $ fetch_ s k
                 else mempty
 
-  showStore :: Store k a -> String
-  showStore (MkStore t s) = "MkStore {" ++ show t ++ " " ++ showStore_ s ++ "}"
-
 -- | A container for optional attributes 'a' on elements 'k'.
 data Store k a = MkStore (Tree k) (Store_ k a)
+
+instance (Show k, Attribute k a) => Show (Store k a) where
+  show (MkStore t s) = "MkStore " ++ show t ++ " " ++ show s
 
 -- | An existential container for elements 'k'.
 data Storable k = forall a . Attribute k a => MkStorable (Store k a)
 
-instance Show (Storable k) where
-  show (MkStorable s) = showStore s
+instance Show k => Show (Storable k) where
+  show (MkStorable s) = show s
 
 -- | A decision tree.
 data Tree k = Node (Storable k) k

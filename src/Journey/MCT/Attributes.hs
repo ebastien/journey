@@ -9,8 +9,8 @@ import qualified Data.Map as M
 import qualified Data.IntMap as IM
 import qualified Data.IntervalMap as PM
 
-import Journey.MCT.DecisionTree (Tree(..), Attribute(..), Storable(..), Store(..))
-import Journey.MCT.Tree (MCTTree, MinMCT(..), MCTStorable)
+import Journey.MCT.DecisionTree
+import Journey.MCT.Tree
 import Journey.MCT.Rule
 
 -- | A container for Int attributes.
@@ -64,7 +64,6 @@ instance Attribute MinMCT Attr1 where
                                          $ storeInt s (fromJust $ rInt k) c
   fetch_ (MkStoreAttr1 s) (MkMinMCT k) = fetchInt s (fromJust $ rInt k)
   exist_ _ = isJust . rInt . getMinMCT
-  showStore_ = show
 
 -- | Empty type for instantiation of MCT attribute #2.
 data Attr2
@@ -76,7 +75,6 @@ instance Attribute MinMCT Attr2 where
                                          $ storePeriod s (rDay1 k, rDay2 k) c
   fetch_ (MkStoreAttr2 s) (MkMinMCT k) = fetchPeriod s (rDay1 k, rDay2 k)
   exist_ _ (MkMinMCT (MkRule { rDay1 = a, rDay2 = b })) = isJust a || isJust b
-  showStore_ = show
 
 -- | Structure of MCT attributes.
 attributes :: [MCTStorable]
