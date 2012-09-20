@@ -2,7 +2,8 @@
 
 module Journey.Builder (
     buildAll
-    ) where
+  , buildPath
+  ) where
 
 import Data.List (sort, group, intersperse)
 import Data.Monoid (mconcat, mempty)
