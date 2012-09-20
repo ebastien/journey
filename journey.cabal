@@ -14,10 +14,10 @@ Tested-With:   GHC ==7.4.1
 Library
   Hs-source-dirs:   src
   Default-Language: Haskell2010
-  GHC-Options:      -O2
+  GHC-Options:      -O2 -threaded -with-rtsopts=-N
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
-    vector, text, text-format, containers, IntervalMap
+    vector, text, text-format, containers, IntervalMap, parallel, deepseq
   Exposed-Modules:
     Journey.Ssim,
     Journey.Route,
@@ -36,10 +36,10 @@ Executable itineraries
   Hs-source-dirs:   src
   Main-is:          Main.hs
   Default-Language: Haskell2010
-  GHC-Options: -O2
+  GHC-Options:      -O2 -threaded -with-rtsopts=-N
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
-    vector, text, text-format, containers, IntervalMap
+    vector, text, text-format, containers, IntervalMap, parallel, deepseq
   Other-Modules:
     Journey.Ssim,
     Journey.Route,
@@ -60,5 +60,5 @@ Test-Suite tests
   Default-Language: Haskell2010
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
-    vector, text, text-format, containers, IntervalMap,
+    vector, text, text-format, containers, IntervalMap, parallel, deepseq,
     test-framework, QuickCheck, test-framework-quickcheck2

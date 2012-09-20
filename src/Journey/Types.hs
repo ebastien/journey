@@ -30,6 +30,7 @@ import Data.Char (chr, ord)
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Data.Time.Calendar (Day, addDays)
 import Data.Time.Calendar.WeekDate (toWeekDate)
+import Control.DeepSeq (NFData)
 
 {-------------------------------------------------------------------------------
   Airline code
@@ -50,7 +51,7 @@ instance Show AirlineCode where
   Port
 -------------------------------------------------------------------------------}
 
-newtype Port = MkPort Int deriving (Eq, Ord, Enum)
+newtype Port = MkPort Int deriving (Eq, Ord, Enum, NFData)
 
 instance Show Port where
   show (MkPort p) = loop (3 :: Int) p

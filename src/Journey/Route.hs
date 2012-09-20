@@ -12,6 +12,8 @@ module Journey.Route (
     ) where
     
 import Control.Monad (foldM, mzero)
+import Control.DeepSeq (NFData(..))
+import Control.Parallel.Strategies (withStrategy, parList, rdeepseq)
 import Data.Maybe (mapMaybe)
 
 import qualified Journey.EnumMap as M
@@ -25,7 +27,7 @@ type PortMap a = M.EnumMap Port a
 -}
 
 -- | A set of elements with a notion of distance.
-class MetricSpace e where
+class NFData e => MetricSpace e where
   -- | Distance between two elements.
   distance :: e -> e -> Distance
 
@@ -45,10 +47,16 @@ data Itinerary e = Itinerary { iDist  :: Distance -- total indirect distance
                              , iSteps :: [Step e] -- list of steps
                              } deriving (Show)
 
+instance NFData e => NFData (Itinerary e) where
+  rnf (Itinerary d p s) = rnf d `seq` rnf p `seq` rnf s
+
 -- | A step in the graph of ports.
 data Step e = Step { sDist :: Distance -- distance
                    , sTo   :: e        -- to element
                    } deriving (Show)
+
+instance NFData e => NFData (Step e) where
+  rnf (Step d t) = rnf d `seq` rnf t
 
 -- | A graph of ports organized as adjacency by destination.
 type PortAdjacencies e = PortMap [Edge e]
@@ -86,7 +94,7 @@ extendedCoverage adj covs@(cov:_) = flip (:) covs $ groupOrg $ do
       Just distT -> return (portA, (dest, Itinerary distT path' steps'))
         where path' = portB : path
               steps' = (Step distAB elemB) : steps
-  where groupOrg = M.mapWithKey groupDst . M.group
+  where groupOrg = M.mapWithKey groupDst . M.group . withStrategy (parList rdeepseq)
         groupDst org = M.filter (not . null)
                      . M.mapWithKey (filterDist $ map (M.find org) covs)
                      . M.group

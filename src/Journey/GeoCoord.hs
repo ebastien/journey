@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Journey.GeoCoord (
       loadReferences
     , assocToCities
@@ -7,6 +9,7 @@ module Journey.GeoCoord (
 import Control.Monad (join)
 import Data.Maybe (fromJust)
 import Control.Arrow ((***))
+import Control.DeepSeq (NFData)
 import Data.List (nub)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -23,7 +26,7 @@ import Journey.Ssim (toPort)
   Geographic coordinates space
 -}
 
-newtype GeoCoord = GeoCoord (Double, Double) deriving (Show)
+newtype GeoCoord = GeoCoord (Double, Double) deriving (Show, NFData)
 
 -- | The orthodromic distance between two geographic coordinates.
 orthodromicDistance :: GeoCoord -> GeoCoord -> Distance
