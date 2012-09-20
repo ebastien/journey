@@ -60,18 +60,17 @@ connections onds d0 = map (($[]) . fst) . foldl combine s0 . toSteps
         combine acc (a, b) = do
             (done, (incoming, timeleft)) <- acc
             outgoing <- M.find (MkPOnD a b) onds
-            let cmax = min timeleft $ secondsToDiffTime 6*60*60
-                (d, t, cmin, count) = case incoming of
+            let (d, t, cmin, cmax, count) = case incoming of
                   Nothing -> ( d0
                              , secondsToDiffTime 0
                              , secondsToDiffTime 0
-                             , const
-                             )
+                             , timeleft
+                             , const )
                   Just i  -> ( sdArrivalDate i
                              , sdArrivalTime i
                              , mct (sdSegment i) outgoing
-                             , (+)
-                             )
+                             , min timeleft $ secondsToDiffTime 6*60*60
+                             , (+) )
             case connect d t cmin cmax outgoing of
               Nothing     -> mzero
               Just (o, w) -> let elapsed = count (spElapsedTime outgoing) w
