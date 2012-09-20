@@ -54,16 +54,19 @@ storePeriod s p c = PM.insertWith f (fromPeriod p) (c Empty) s
 fetchPeriod :: PeriodStore -> Period -> [MCTTree]
 fetchPeriod s p = map snd $ PM.intersecting s (fromPeriod p)
 
+options :: MinMCT -> Options
+options = rOptions . getMinMCT
+
 -- | Empty type for instantiation of MCT attribute #1.
 data Attr1
 
 instance Attribute MinMCT Attr1 where
   data Store_ MinMCT Attr1 = MkStoreAttr1 IntStore deriving (Show)
   empty_ = MkStoreAttr1 emptyInt
-  store_ (MkStoreAttr1 s) (MkMinMCT k) c = MkStoreAttr1
-                                         $ storeInt s (fromJust $ rInt k) c
-  fetch_ (MkStoreAttr1 s) (MkMinMCT k) = fetchInt s (fromJust $ rInt k)
-  exist_ _ = isJust . rInt . getMinMCT
+  store_ (MkStoreAttr1 s) k c = MkStoreAttr1
+                              $ storeInt s (fromJust . rInt $ options k) c
+  fetch_ (MkStoreAttr1 s) k = fetchInt s (fromJust . rInt $ options k)
+  exist_ _ = isJust . rInt . options
 
 -- | Empty type for instantiation of MCT attribute #2.
 data Attr2
@@ -71,10 +74,13 @@ data Attr2
 instance Attribute MinMCT Attr2 where
   data Store_ MinMCT Attr2 = MkStoreAttr2 PeriodStore deriving (Show)
   empty_ = MkStoreAttr2 emptyPeriod
-  store_ (MkStoreAttr2 s) (MkMinMCT k) c = MkStoreAttr2
-                                         $ storePeriod s (rDay1 k, rDay2 k) c
-  fetch_ (MkStoreAttr2 s) (MkMinMCT k) = fetchPeriod s (rDay1 k, rDay2 k)
-  exist_ _ (MkMinMCT (MkRule { rDay1 = a, rDay2 = b })) = isJust a || isJust b
+  store_ (MkStoreAttr2 s) k c = MkStoreAttr2
+                              $ storePeriod s ( rDay1 $ options k
+                                              , rDay2 $ options k ) c
+  fetch_ (MkStoreAttr2 s) k = fetchPeriod s ( rDay1 $ options k
+                                            , rDay2 $ options k)
+  exist_ _ k = isJust (rDay1 o) || isJust (rDay2 o)
+    where o = options k
 
 -- | Structure of MCT attributes.
 attributes :: [MCTStorable]

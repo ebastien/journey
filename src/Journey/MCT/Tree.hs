@@ -22,22 +22,20 @@ newtype MinMCT = MkMinMCT { getMinMCT :: Rule }
                           deriving (Show)
 
 instance Monoid MinMCT where
-  mempty = MkMinMCT $ MkRule undefMCT undefined
-                      undefined undefined undefined
-  mappend i@(MkMinMCT (MkRule { rMCT = a }))
-          j@(MkMinMCT (MkRule { rMCT = b })) | a < b     = i
-                                             | otherwise = j
+  mempty = MkMinMCT undefRule
+  mappend i@(MkMinMCT a)
+          j@(MkMinMCT b) | rMCT a < rMCT b = i
+                         | otherwise       = j
 
 -- | The Rule monoid under maximum rank.
 newtype MaxRank = MkMaxRank { getMaxRank :: Rule }
                             deriving (Show)
 
 instance Monoid MaxRank where
-  mempty = MkMaxRank $ MkRule undefined undefRank
-                       undefined undefined undefined
-  mappend i@(MkMaxRank (MkRule { rRank = x }))
-          j@(MkMaxRank (MkRule { rRank = y })) | x > y     = i
-                                               | otherwise = j
+  mempty = MkMaxRank undefRule
+  mappend i@(MkMaxRank x)
+          j@(MkMaxRank y) | rRank x > rRank y = i
+                          | otherwise         = j
 
 -- | A decision tree on minimum connecting times.
 type MCTTree = DT.Tree MinMCT
@@ -49,7 +47,7 @@ pruneLookup t i = if notfound; then Nothing; else Just result
   where result = getMaxRank $ DT.lookupWith mlift keep t (MkMinMCT i)
         notfound = rRank result == undefRank
         mlift (MkMinMCT j) = MkMaxRank j
-        keep (MkMinMCT (MkRule { rMCT = a })) = (rMCT i) >= a
+        keep (MkMinMCT a) = rMCT i >= rMCT a
 
 -- | An existential container for minimum connecting times.
 type MCTStorable = DT.Storable MinMCT
