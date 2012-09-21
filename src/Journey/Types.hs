@@ -4,7 +4,9 @@
 module Journey.Types (
       AirlineCode(..)
     , Port(..)
+    , City, Region, State, Country, Transit
     , OnD
+    , POnD(..)
     , Path
     , PeriodBoundary
     , Dow(..)
@@ -35,7 +37,7 @@ import Data.Time.Calendar.WeekDate (toWeekDate)
   Airline code
 -------------------------------------------------------------------------------}
 
-newtype AirlineCode = MkAirlineCode Int deriving (Eq, Ord)
+newtype AirlineCode = MkAirlineCode Int deriving (Eq, Ord, Enum)
 
 instance Show AirlineCode where
   show (MkAirlineCode a) = loop (3 :: Int) a
@@ -63,6 +65,27 @@ type OnD = (Port, Port)
 
 -- | A sequence of ports.
 type Path = [Port]
+
+-- | A packed OnD.
+data POnD = MkPOnD !Port !Port deriving (Show)
+
+instance Enum POnD where
+  fromEnum (MkPOnD a b) = (fromEnum a) * (26^(3::Int)) + (fromEnum b)
+  toEnum i = let (a,b) = divMod i (26^(3::Int)) in MkPOnD (toEnum a) (toEnum b)
+
+{-------------------------------------------------------------------------------
+  
+-------------------------------------------------------------------------------}
+
+type City = Port
+
+newtype Country = MkCountry Int deriving (Eq, Ord, Enum)
+
+newtype Region = MkRegion Int deriving (Eq, Ord, Enum)
+
+newtype State = MkState Int deriving (Eq, Ord, Enum)
+
+data Transit = Domestic | International deriving (Eq, Ord, Enum)
 
 {-------------------------------------------------------------------------------
   Days of the week

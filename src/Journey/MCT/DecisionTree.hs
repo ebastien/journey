@@ -22,35 +22,35 @@ import Prelude hiding (lookup)
 class Show (Store_ k a) => Attribute k a where
   -- | The internal container.
   data Store_ k a :: *
-
+  
   empty_ :: Store_ k a
   store_ :: Store_ k a -> k -> (Tree k -> Tree k) -> Store_ k a
   fetch_ :: Store_ k a -> k -> [Tree k]
   exist_ :: Store_ k a -> k -> Bool
-
-  -- | An empty container.
-  empty :: Store k a
-  empty = MkStore Empty empty_
-
-  -- | The 'store' function inserts an optional attribute to the container.
-  store :: Store k a -> k -> (Tree k -> Tree k) -> Store k a
-  store (MkStore w s) k c = MkStore w' s'
-    where (w', s') = if exist_ s k
-                       then (w  , store_ s k c)
-                       else (c w, s)
-
-  -- | The 'fetch' function retrieves an optional attribute from the container.
-  fetch :: Monoid m => Store k a -> k -> (Tree k -> m) -> m
-  fetch (MkStore w s) k c = (c w) `mappend` m
-    where m = if exist_ s k
-                then foldMap c $ fetch_ s k
-                else mempty
 
 -- | A container for optional attributes 'a' on elements 'k'.
 data Store k a = MkStore (Tree k) (Store_ k a)
 
 instance (Show k, Attribute k a) => Show (Store k a) where
   show (MkStore t s) = "MkStore " ++ show t ++ " " ++ show s
+
+-- | An empty container.
+empty :: Attribute k a => Store k a
+empty = MkStore Empty empty_
+
+-- | The 'store' function inserts an optional attribute to the container.
+store :: Attribute k a => Store k a -> k -> (Tree k -> Tree k) -> Store k a
+store (MkStore w s) k c = MkStore w' s'
+  where (w', s') = if exist_ s k
+                     then (w  , store_ s k c)
+                     else (c w, s)
+
+-- | The 'fetch' function retrieves an optional attribute from the container.
+fetch :: (Attribute k a, Monoid m) => Store k a -> k -> (Tree k -> m) -> m
+fetch (MkStore w s) k c = (c w) `mappend` m
+  where m = if exist_ s k
+              then foldMap c $ fetch_ s k
+              else mempty
 
 -- | An existential container for elements 'k'.
 data Storable k = forall a . Attribute k a => MkStorable (Store k a)

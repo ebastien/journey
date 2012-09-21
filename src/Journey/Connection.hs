@@ -13,7 +13,7 @@ import Data.Time.Calendar (Day, addDays, diffDays)
 import Data.Time.Clock (secondsToDiffTime)
 
 import qualified Journey.EnumMap as M
-import Journey.Types ( Port, SegmentPeriod, spElapsedTime, OnD
+import Journey.Types ( Port, SegmentPeriod, spElapsedTime, OnD, POnD(..)
                      , SegmentDate(..), sdArrivalDate, sdArrivalTime, Path
                      , SegmentLeg(..), ScheduleTime, TimeDuration
                      , LegPeriod(..), withinPeriod )
@@ -21,13 +21,6 @@ import Journey.Types ( Port, SegmentPeriod, spElapsedTime, OnD
 {-------------------------------------------------------------------------------
   Connection building
 -------------------------------------------------------------------------------}
-
--- | A packed OnD.
-data POnD = MkPOnD !Port !Port deriving (Show)
-
-instance Enum POnD where
-  fromEnum (MkPOnD a b) = (fromEnum a) * (26^(3::Int)) + (fromEnum b)
-  toEnum i = let (a,b) = divMod i (26^(3::Int)) in MkPOnD (toEnum a) (toEnum b)
 
 -- | A collection of OnD associations.
 type OnDMap a = M.EnumMap POnD a

@@ -12,6 +12,8 @@ module Journey.MCT.Rule (
   
 import Data.Time.Calendar (Day)
 
+import Journey.Types
+
 newtype MCT = MkMCT { getMCT :: Int }
                     deriving (Eq, Ord, Bounded, Show)
 
@@ -29,9 +31,15 @@ data Rule = MkRule { rRank :: Rank
                    , rOptions :: Options }
                    deriving (Eq, Show)
 
-data Options = MkOptions { rInt :: Maybe Int
-                         , rDay1 :: Maybe Day
-                         , rDay2 :: Maybe Day }
+data Options = MkOptions { rArrPort :: Maybe Port
+                         , rDepPort :: Maybe Port
+                         , rArrFlightBegin :: Maybe Int
+                         , rArrFlightEnd :: Maybe Int
+                         , rDepFlightBegin :: Maybe Int
+                         , rDepFlightEnd :: Maybe Int
+                         , rValidityBegin :: Maybe Day
+                         , rValidityEnd :: Maybe Day 
+                         }
                          deriving (Eq, Show)
 
 undefRule :: Rule
