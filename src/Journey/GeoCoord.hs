@@ -17,7 +17,7 @@ import qualified Journey.EnumMap as M
 import Journey.Route ( MetricSpace(..), PortAdjacencies
                      , Edge(..), Distance, PortMap )
 import Journey.Types (Port, OnD)
-import Journey.Ssim (toPort)
+import Journey.Parsers (toPort)
 
 {-
   Geographic coordinates space

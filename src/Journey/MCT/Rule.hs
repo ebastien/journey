@@ -3,7 +3,7 @@ module Journey.MCT.Rule (
   , undefMCT
   , Rank(..)
   , undefRank
-  , Rule(rRank, rMCT, rOptions)
+  , Rule(..)
   , Options(..)
   , undefRule
   , mkRule
@@ -33,10 +33,29 @@ data Rule = MkRule { rRank :: Rank
 
 data Options = MkOptions { rArrPort :: Maybe Port
                          , rDepPort :: Maybe Port
+                         , rArrTerminal :: Maybe Terminal
+                         , rDepTerminal :: Maybe Terminal
+                         , rTransit :: Maybe Transit
+                         , rArrCarrier :: Maybe AirlineCode
+                         , rDepCarrier :: Maybe AirlineCode
+                         , rPrevRegion :: Maybe Region
+                         , rNextRegion :: Maybe Region
+                         , rPrevCountry :: Maybe Country
+                         , rNextCountry :: Maybe Country
+                         , rPrevState :: Maybe State
+                         , rNextState :: Maybe State
+                         , rPrevCity :: Maybe City
+                         , rNextCity :: Maybe City
+                         , rPrevPort :: Maybe Port
+                         , rNextPort :: Maybe Port
                          , rArrFlightBegin :: Maybe Int
                          , rArrFlightEnd :: Maybe Int
                          , rDepFlightBegin :: Maybe Int
                          , rDepFlightEnd :: Maybe Int
+                         , rArrAircraftBody :: Maybe AircraftBody
+                         , rDepAircraftBody :: Maybe AircraftBody
+                         , rArrAircraftType :: Maybe AircraftType
+                         , rDepAircraftType :: Maybe AircraftType
                          , rValidityBegin :: Maybe Day
                          , rValidityEnd :: Maybe Day 
                          }

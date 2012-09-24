@@ -4,7 +4,7 @@
 module Journey.Types (
       AirlineCode(..)
     , Port(..)
-    , City, Region, State, Country, Transit
+    , City, Region, State, Country, Transit, Terminal, AircraftBody, AircraftType
     , OnD
     , POnD(..)
     , Path
@@ -72,20 +72,6 @@ data POnD = MkPOnD !Port !Port deriving (Show)
 instance Enum POnD where
   fromEnum (MkPOnD a b) = (fromEnum a) * (26^(3::Int)) + (fromEnum b)
   toEnum i = let (a,b) = divMod i (26^(3::Int)) in MkPOnD (toEnum a) (toEnum b)
-
-{-------------------------------------------------------------------------------
-  
--------------------------------------------------------------------------------}
-
-type City = Port
-
-newtype Country = MkCountry Int deriving (Eq, Ord, Enum)
-
-newtype Region = MkRegion Int deriving (Eq, Ord, Enum)
-
-newtype State = MkState Int deriving (Eq, Ord, Enum)
-
-data Transit = Domestic | International deriving (Eq, Ord, Enum)
 
 {-------------------------------------------------------------------------------
   Days of the week
@@ -199,3 +185,22 @@ sdArrivalDate s = addDays (fromIntegral . spArrivalDateVariation $ sdSegment s)
 sdArrivalTime :: SegmentDate -> ScheduleTime
 sdArrivalTime = spArrivalTime . sdSegment
 
+{-------------------------------------------------------------------------------
+  Work in progress
+-------------------------------------------------------------------------------}
+
+type City = Port
+
+newtype Country = MkCountry Int deriving (Eq, Ord, Enum, Show)
+
+newtype Region = MkRegion Int deriving (Eq, Ord, Enum, Show)
+
+newtype State = MkState Int deriving (Eq, Ord, Enum, Show)
+
+data Transit = Domestic | International deriving (Eq, Ord, Enum, Show)
+
+newtype Terminal = MkTerminal Int deriving (Eq, Ord, Enum, Show)
+
+data AircraftBody = Narrow | Wide deriving (Eq, Ord, Enum, Show)
+
+newtype AircraftType = MkAircraftType Int deriving (Eq, Ord, Enum, Show)

@@ -10,7 +10,8 @@ import qualified Data.Text.Lazy.IO as T
 import Data.Text.Lazy.Builder (toLazyText)
 import System.Environment (getArgs)
 
-import Journey.Ssim (readSsimFile, ssimSegments, toDate)
+import Journey.Ssim (readSsimFile, ssimSegments)
+import Journey.Parsers (toDate)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency)
 import Journey.Connection (fromSegments, toOnDs)

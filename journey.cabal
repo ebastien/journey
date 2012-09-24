@@ -20,17 +20,18 @@ Library
     vector, text, text-format, containers, IntervalMap
   Exposed-Modules:
     Journey.Ssim,
+    Journey.Parsers,
     Journey.Route,
     Journey.GeoCoord,
     Journey.Connection,
     Journey.Builder
-  Other-Modules:
     Journey.EnumMap,
     Journey.Types,
     Journey.MCT.DecisionTree,
     Journey.MCT.Rule,
     Journey.MCT.Tree,
-    Journey.MCT.Attributes
+    Journey.MCT.Attributes,
+    Journey.MCT.OAGParser
 
 Executable itineraries
   Hs-source-dirs:   src
@@ -42,6 +43,7 @@ Executable itineraries
     vector, text, text-format, containers, IntervalMap
   Other-Modules:
     Journey.Ssim,
+    Journey.Parsers,
     Journey.Route,
     Journey.GeoCoord,
     Journey.Connection,
@@ -51,7 +53,8 @@ Executable itineraries
     Journey.MCT.DecisionTree,
     Journey.MCT.Rule,
     Journey.MCT.Tree,
-    Journey.MCT.Attributes
+    Journey.MCT.Attributes,
+    Journey.MCT.OAGParser
 
 Test-Suite tests
   Hs-source-dirs:   src, testsuite/tests

@@ -3,12 +3,15 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 
+{-# LANGUAGE UndecidableInstances #-}
+
 module Journey.MCT.DecisionTree (
       lookupWith
     , lookup
     , fromList
+    , empty
     , Tree(..)
-    , Attribute(..)
+    , IsAttribute(..), IsStore(..)
     , Storable(..)
     , Store(..)
     ) where
@@ -18,51 +21,53 @@ import Data.Monoid (Monoid, mappend, mempty)
 import Data.Foldable (foldMap)
 import Prelude hiding (lookup)
 
+-- | The class of containers of options 'o' on elements 'k'.
+class IsStore k o where
+  data OptionStore k o :: *
+  emptyStore :: OptionStore k o
+  storeOption :: OptionStore k o -> o -> (Tree k -> Tree k) -> OptionStore k o
+  fetchOption :: OptionStore k o -> o -> [Tree k]
+
 -- | The class of attributes 'a' on elements 'k'.
-class Show (Store_ k a) => Attribute k a where
-  -- | The internal container.
-  data Store_ k a :: *
-  
-  empty_ :: Store_ k a
-  store_ :: Store_ k a -> k -> (Tree k -> Tree k) -> Store_ k a
-  fetch_ :: Store_ k a -> k -> [Tree k]
-  exist_ :: Store_ k a -> k -> Bool
+class IsStore k (Option k a) => IsAttribute k a where
+  type Option k a :: *
+  maybeOption :: a -> k -> Maybe (Option k a)
 
 -- | A container for optional attributes 'a' on elements 'k'.
-data Store k a = MkStore (Tree k) (Store_ k a)
+data Store k a = MkStore a (Tree k) (OptionStore k (Option k a))
 
-instance (Show k, Attribute k a) => Show (Store k a) where
-  show (MkStore t s) = "MkStore " ++ show t ++ " " ++ show s
+-- instance (Show k, Show (OptionStore k (Option k a))) => Show (Store k a) where
+--   show (MkStore t s) = "MkStore " ++ show t ++ " " ++ show s
 
 -- | An empty container.
-empty :: Attribute k a => Store k a
-empty = MkStore Empty empty_
+empty :: IsAttribute k a => a -> Store k a
+empty a = MkStore a Empty emptyStore
 
 -- | The 'store' function inserts an optional attribute to the container.
-store :: Attribute k a => Store k a -> k -> (Tree k -> Tree k) -> Store k a
-store (MkStore w s) k c = MkStore w' s'
-  where (w', s') = if exist_ s k
-                     then (w  , store_ s k c)
-                     else (c w, s)
+store :: IsAttribute k a => Store k a -> k -> (Tree k -> Tree k) -> Store k a
+store (MkStore a w s) k c = MkStore a w' s'
+  where (w', s') = case maybeOption a k of
+                     Just o  -> (w  , storeOption s o c)
+                     Nothing -> (c w, s)
 
 -- | The 'fetch' function retrieves an optional attribute from the container.
-fetch :: (Attribute k a, Monoid m) => Store k a -> k -> (Tree k -> m) -> m
-fetch (MkStore w s) k c = (c w) `mappend` m
-  where m = if exist_ s k
-              then foldMap c $ fetch_ s k
-              else mempty
+fetch :: (IsAttribute k a, Monoid m) => Store k a -> k -> (Tree k -> m) -> m
+fetch (MkStore a w s) k c = (c w) `mappend` m
+  where m = case maybeOption a k of
+              Just o  -> foldMap c $ fetchOption s o
+              Nothing -> mempty
 
 -- | An existential container for elements 'k'.
-data Storable k = forall a . Attribute k a => MkStorable (Store k a)
+data Storable k = forall a . IsAttribute k a => MkStorable (Store k a)
 
-instance Show k => Show (Storable k) where
-  show (MkStorable s) = show s
+-- instance Show k => Show (Storable k) where
+--   show (MkStorable s) = show s
 
 -- | A decision tree.
 data Tree k = Node (Storable k) k
             | Leaf [k]
             | Empty
-            deriving (Show)
+--            deriving (Show)
 
 -- | Insert an element into a decision tree.
 insert :: (Monoid k) => [Storable k] -> Tree k -> k -> Tree k
