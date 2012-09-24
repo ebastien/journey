@@ -4,7 +4,9 @@
 module Journey.Types (
       AirlineCode(..)
     , Port(..)
-    , City, Region, State, Country, Transit, Terminal, AircraftBody, AircraftType
+    , City, Region, State, Country, Transit
+    , Terminal, AircraftBody, AircraftType
+    , ConnectedPorts(..), otherPort
     , OnD
     , POnD(..)
     , Path
@@ -204,3 +206,10 @@ newtype Terminal = MkTerminal Int deriving (Eq, Ord, Enum, Show)
 data AircraftBody = Narrow | Wide deriving (Eq, Ord, Enum, Show)
 
 newtype AircraftType = MkAircraftType Int deriving (Eq, Ord, Enum, Show)
+
+data ConnectedPorts = SamePort (Maybe Port) | OtherPort (Maybe (Port, Port))
+                      deriving (Eq, Show)
+
+otherPort :: Port -> Port -> ConnectedPorts
+otherPort a b = OtherPort $ Just (a, b)
+

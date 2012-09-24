@@ -6,6 +6,7 @@ import Journey.MCT.Rule
 import Journey.MCT.Tree
 import Journey.MCT.Attributes
 
+{-
 d1 = Just $ fromGregorian 2012  9 19
 d2 = Just $ fromGregorian 2012  9 25
 d3 = Just $ fromGregorian 2012 10 12
@@ -35,3 +36,4 @@ prop_lookup4 = pruneLookup tree q == Just r0
 prop_lookup5 = pruneLookup tree q == Just r5
   where q = mkQuery (MkMCT 65) $ MkOptions (Just 10) d d
         d = Just $ fromGregorian 2012 9 29
+-}
