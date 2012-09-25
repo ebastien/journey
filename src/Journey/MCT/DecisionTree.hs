@@ -3,8 +3,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-{-# LANGUAGE UndecidableInstances #-}
-
 module Journey.MCT.DecisionTree (
       lookupWith
     , lookup

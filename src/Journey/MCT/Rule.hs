@@ -31,10 +31,10 @@ data Rule = MkRule { rRank :: Rank
                    , rOptions :: Options }
                    deriving (Eq, Show)
 
-data Options = MkOptions { rAirports :: ConnectedPorts
+data Options = MkOptions { rAirports :: TransitPorts
                          , rArrTerminal :: Maybe Terminal
                          , rDepTerminal :: Maybe Terminal
-                         , rTransit :: Maybe Transit
+                         , rTransitFlow :: TransitFlow
                          , rArrCarrier :: Maybe AirlineCode
                          , rDepCarrier :: Maybe AirlineCode
                          , rPrevRegion :: Maybe Region
@@ -47,10 +47,8 @@ data Options = MkOptions { rAirports :: ConnectedPorts
                          , rNextCity :: Maybe City
                          , rPrevPort :: Maybe Port
                          , rNextPort :: Maybe Port
-                         , rArrFlightBegin :: Maybe Int
-                         , rArrFlightEnd :: Maybe Int
-                         , rDepFlightBegin :: Maybe Int
-                         , rDepFlightEnd :: Maybe Int
+                         , rArrFlights :: Maybe (Int, Int)
+                         , rDepFlights :: Maybe (Int, Int)
                          , rArrAircraftBody :: Maybe AircraftBody
                          , rDepAircraftBody :: Maybe AircraftBody
                          , rArrAircraftType :: Maybe AircraftType

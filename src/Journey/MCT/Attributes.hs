@@ -55,13 +55,8 @@ instance Bounded Day where
 data ConnectingPorts
 
 instance IsAttribute MinMCT ConnectingPorts where
-  type Option MinMCT ConnectingPorts = OptionEnum POnD
-
-  maybeOption _ k = let o = options k
-                    in case (rArrPort o, rDepPort o) of
-                        (Nothing, _      ) -> Nothing
-                        (Just a , Nothing) -> Just . MkOptionEnum $ MkPOnD a a
-                        (Just a , Just b ) -> Just . MkOptionEnum $ MkPOnD a b
+  type Option MinMCT ConnectingPorts = OptionEnum TransitPorts
+  maybeOption _ k = Just . MkOptionEnum $ rAirports (options k)
 
 data ArrivalTerminal
 
@@ -78,8 +73,8 @@ instance IsAttribute MinMCT DepartureTerminal where
 data TransitStatus
 
 instance IsAttribute MinMCT TransitStatus where
-  type Option MinMCT TransitStatus = OptionEnum Transit
-  maybeOption _ k = MkOptionEnum <$> rTransit (options k)
+  type Option MinMCT TransitStatus = OptionEnum TransitFlow
+  maybeOption _ k = Just . MkOptionEnum $ rTransitFlow (options k)
 
 data ArrivalCarrier
 
@@ -157,22 +152,13 @@ data ArrivalFlightRange
 
 instance IsAttribute MinMCT ArrivalFlightRange where
   type Option MinMCT ArrivalFlightRange = PM.Interval Int
-  maybeOption _ k = let o = options k
-                    in case (rArrFlightBegin o, rArrFlightEnd o) of
-                       (Nothing, _      ) -> Nothing
-                       (Just a , Nothing) -> Just $ PM.ClosedInterval a a
-                       (Just a , Just b ) -> Just $ PM.ClosedInterval a b
-
+  maybeOption _ k = uncurry PM.ClosedInterval <$> rArrFlights (options k)
 
 data DepartureFlightRange
 
 instance IsAttribute MinMCT DepartureFlightRange where
   type Option MinMCT DepartureFlightRange = PM.Interval Int
-  maybeOption _ k = let o = options k
-                    in case (rDepFlightBegin o, rDepFlightEnd o) of
-                       (Nothing, _      ) -> Nothing
-                       (Just a , Nothing) -> Just $ PM.ClosedInterval a a
-                       (Just a , Just b ) -> Just $ PM.ClosedInterval a b
+  maybeOption _ k = uncurry PM.ClosedInterval <$> rDepFlights (options k)
 
 data ArrivalAircraftBody
 

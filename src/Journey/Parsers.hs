@@ -13,6 +13,10 @@ module Journey.Parsers (
     , scheduleTimeP
     , fnumP
     , pointsIndicatorP
+    , packWith
+    , packBoundedWith
+    , alphaPack
+    , alphaNumPack
     ) where
 
 import qualified Data.ByteString.Char8 as B8
@@ -23,7 +27,7 @@ import qualified Data.Attoparsec.ByteString.Char8 as P
 import qualified Data.Attoparsec.ByteString.Lazy as LP
 import Data.Functor ((<$>))
 import Control.Monad (void, join)
-import Control.Applicative (pure, some, (<*>), (<*), (*>), (<|>))
+import Control.Applicative (pure, some, (<*>), (<*), (*>), (<|>), liftA2)
 import Data.List (elemIndex)
 import Data.Function (on)
 import Data.Maybe (fromMaybe)
@@ -51,10 +55,30 @@ decimalP n = do
   i <- readDecimal <$> P.take n
   fromMaybe (fail "Decimal parsing failed") $ (return . fst) <$> i
 
--- | Parser generator for values packed as numbers.
+-- | Parser generator for fixed-length strings packed as numbers.
 packWith :: Num a => Int -> (Int -> Parser a) -> Parser a
-packWith n f | n > 0     = sum <$> (sequence $ map f [0..n-1])
-             | otherwise = error "Invalid packing length"
+packWith n f = sum <$> (mapM f $ take n [0..])
+
+-- | Parser generator for bounded-length strings packed as numbers.
+packBoundedWith :: Num a => Int -> Int -> Parser () -> (Int -> Parser a) -> Parser a
+packBoundedWith l h end f = sum <$> loop 0
+  where loop n | n < l = step n
+        loop n | n < h = (end *> pure []) <|> step n
+        loop _         = pure []
+        step n = liftA2 (:) (f n) (loop $ n+1)
+
+-- | Parser generator for a packed letter.
+alphaPack :: Int -> Parser Int
+alphaPack n = (* 26^n) . subtract (ord 'A') . ord <$> P.satisfy letter
+  where letter c = c >= 'A' && c <= 'Z'
+
+-- | Parser generator for a packed alphanumeric character.
+alphaNumPack :: Int -> Parser Int
+alphaNumPack n = (* 37^n) <$> letter <|> digit <|> space
+  where letter = (+11) . subtract (ord 'A') . ord <$> P.satisfy isUpperLetter
+        digit  =  (+1) . subtract (ord '0') . ord <$> P.digit
+        space  = pure 0 <* P.char ' '
+        isUpperLetter c = c >= 'A' && c <= 'Z'
 
 -- | ByteString parsing to Maybe.
 maybeParse :: Parser a -> B8.ByteString -> Maybe a
@@ -68,7 +92,7 @@ airlineP = MkAirlineCode <$> packWith 3 step <?> "Airline code"
                | otherwise = letter <|> digit <|> space
         letter = (+11) . subtract (ord 'A') . ord <$> P.satisfy isUpperLetter
         digit  =  (+1) . subtract (ord '0') . ord <$> P.digit
-        space  = pure 0 <* P.space
+        space  = pure 0 <* P.char ' '
         isUpperLetter c = c >= 'A' && c <= 'Z'
 
 -- | Try to convert a ByteString to an AirlineCode.
@@ -77,9 +101,7 @@ toAirlineCode = maybeParse airlineP
 
 -- | Parser for ports.
 portP :: Parser Port
-portP = MkPort <$> packWith 3 step <?> "Port"
-  where step n = (* 26^n) . subtract (ord 'A') . ord <$> P.satisfy letter
-        letter c = c >= 'A' && c <= 'Z'
+portP = MkPort <$> packWith 3 alphaPack <?> "Port"
 
 -- | Try to convert a ByteString to a Port.
 toPort :: B8.ByteString -> Maybe Port
@@ -160,31 +182,8 @@ scheduleTimeP = do
 
 -- | Parser for flight numbers.
 fnumP :: Parser Int
-fnumP = paddedDecimalP 4
+fnumP = paddedDecimalP 4 <?> "Flight number"
 
 -- | Parser for board and off points indicators.
 pointsIndicatorP :: Parser Int
-pointsIndicatorP = packWith 2 step <?> "Board and off points indicator"
-  where step n = (* 26^n) . subtract (ord 'A') . ord <$> P.satisfy letter
-        letter c = c >= 'A' && c <= 'Z'
-
-countryP :: Parser Country
-countryP = undefined
-
-regionP :: Parser Region
-regionP = undefined
-
-stateP :: Parser State
-stateP = undefined
-
-transitP :: Parser Transit
-transitP = undefined
-
-terminalP :: Parser Terminal
-terminalP = undefined
-
-aircraftBodyP :: Parser AircraftBody
-aircraftBodyP = undefined
-
-aircraftTypeP :: Parser AircraftType
-aircraftTypeP = undefined
+pointsIndicatorP = packWith 2 alphaPack <?> "Board and off points indicator"

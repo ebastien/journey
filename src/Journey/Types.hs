@@ -4,9 +4,6 @@
 module Journey.Types (
       AirlineCode(..)
     , Port(..)
-    , City, Region, State, Country, Transit
-    , Terminal, AircraftBody, AircraftType
-    , ConnectedPorts(..), otherPort
     , OnD
     , POnD(..)
     , Path
@@ -26,10 +23,13 @@ module Journey.Types (
     , sdDepartureTime, sdArrivalDate, sdArrivalTime
     , SegmentDEI
     , segmentIdx
+    , City, Region(..), State(..), Country(..), TransitArea(..), TransitFlow(..)
+    , Terminal(..), AircraftBody(..), AircraftType(..)
+    , TransitPorts(..), otherTransitPort
     ) where
 
 import Data.Word (Word8)
-import Data.Bits (testBit)
+import Data.Bits (testBit, shiftL, shiftR, (.&.))
 import Data.Char (chr, ord)
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Data.Time.Calendar (Day, addDays)
@@ -199,7 +199,13 @@ newtype Region = MkRegion Int deriving (Eq, Ord, Enum, Show)
 
 newtype State = MkState Int deriving (Eq, Ord, Enum, Show)
 
-data Transit = Domestic | International deriving (Eq, Ord, Enum, Show)
+data TransitArea = Domestic | International deriving (Eq, Ord, Enum, Show)
+
+data TransitFlow = MkTransitFlow TransitArea TransitArea deriving (Eq, Ord, Show)
+
+instance Enum TransitFlow where
+  fromEnum (MkTransitFlow a b) = 2 * fromEnum a + fromEnum b
+  toEnum i = let (a,b) = divMod i 2 in MkTransitFlow (toEnum a) (toEnum b)
 
 newtype Terminal = MkTerminal Int deriving (Eq, Ord, Enum, Show)
 
@@ -207,9 +213,29 @@ data AircraftBody = Narrow | Wide deriving (Eq, Ord, Enum, Show)
 
 newtype AircraftType = MkAircraftType Int deriving (Eq, Ord, Enum, Show)
 
-data ConnectedPorts = SamePort (Maybe Port) | OtherPort (Maybe (Port, Port))
-                      deriving (Eq, Show)
+{-------------------------------------------------------------------------------
+  Airports in transit
+-------------------------------------------------------------------------------}
 
-otherPort :: Port -> Port -> ConnectedPorts
-otherPort a b = OtherPort $ Just (a, b)
+data TransitPorts = SameTransitPort (Maybe Port)
+                  | OtherTransitPort (Maybe (Port, Port))
+                    deriving (Eq, Show)
 
+otherTransitPort :: Port -> Port -> TransitPorts
+otherTransitPort a b = OtherTransitPort $ Just (a, b)
+
+instance Enum TransitPorts where
+  fromEnum (SameTransitPort Nothing)       = 0
+  fromEnum (OtherTransitPort Nothing)      = 1
+  fromEnum (SameTransitPort (Just a))      = let n = fromEnum a
+                                             in 2 + shiftL n 2
+  fromEnum (OtherTransitPort (Just (a,b))) = let n = (fromEnum a) * 26^(3::Int)
+                                                   + fromEnum b
+                                             in 3 + shiftL n 2
+
+  toEnum i = case (i .&. 3, shiftR i 2) of
+               (0, _) -> SameTransitPort Nothing
+               (1, _) -> OtherTransitPort Nothing
+               (2, n) -> SameTransitPort . Just $ toEnum n
+               (3, n) -> let (a,b) = divMod (shiftR i 2) (26^(3::Int))
+                         in OtherTransitPort . Just $ (toEnum a, toEnum b)
