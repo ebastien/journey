@@ -35,10 +35,10 @@ spaceP n = void (P.string $ B8.replicate n ' ')
        <|> peekEndOfLine <?> "Space padding"
 
 defaultP :: Int -> a -> Parser a
-defaultP n a = spaceP n *> pure a
+defaultP n a = spaceP n *> (pure $! a)
 
-option :: Int -> Parser a -> Parser (Maybe a)
-option n p = Just <$> p <|> defaultP n Nothing
+option :: Int -> Parser a -> Parser (Option a)
+option n p = Known <$> p <|> defaultP n Unknown
 
 peekEndOfLine :: Parser ()
 peekEndOfLine = P.endOfInput <|> do
@@ -115,18 +115,20 @@ carrierP = MkAirlineCode <$> alphaNumPackBounded 2 3
 aircraftClassP :: Parser AircraftClass
 aircraftClassP = Left <$> aircraftBodyP <|> Right <$> aircraftTypeP
 
-fromClass :: Maybe AircraftClass -> (Maybe AircraftBody, Maybe AircraftType)
+-- TODO: Move to attributes
+fromClass :: Option AircraftClass -> (Option AircraftBody, Option AircraftType)
 fromClass c = case c of
-                Nothing        -> (Nothing, Nothing)
-                Just (Left a)  -> (Just a , Nothing)
-                Just (Right a) -> (Nothing, Just a )
+                Unknown         -> (Unknown, Unknown)
+                Known (Left a)  -> (Known a, Unknown)
+                Known (Right a) -> (Unknown, Known a)
 
-flightsP :: Parser (Maybe (Int, Int))
+flightsP :: Parser (Option FlightRange)
 flightsP = do
   begin <- option 4 fnumP <?> "Low bound flight number"
   case begin of
-    Nothing -> defaultP 4 Nothing      <?> "High bound flight number (none)"
-    Just a  -> defaultP 4 (Just (a,a)) <|> Just . (,) a <$> fnumP
+    Unknown -> defaultP 4 Unknown      <?> "High bound flight number (none)"
+    Known a -> defaultP 4 (Known $ MkFlightRange a a)
+           <|> Known . MkFlightRange a <$> fnumP
 
 headerP :: Parser ()
 headerP = P.string "UHL"
@@ -134,21 +136,21 @@ headerP = P.string "UHL"
        *> PW.skipWhile (not . P.isEndOfLine)
        *> P.endOfLine *> pure ()
 
-countOption :: Maybe a -> Int
-countOption a = if isJust a then 1; else 0
+countOption :: Option a -> Int
+countOption a = if isKnown a then 1; else 0
 
 ruleP :: Parser Rule
 ruleP = do
-  arrPort <- P.string "***" *> pure Nothing
-         <|> Just <$> portP               <?> "Rule arrival airport"
+  arrPort <- P.string "***" *> pure Unknown
+         <|> Known <$> portP               <?> "Rule arrival airport"
   void (P.string "   ")                   <?> "Rule sequence number"
   mct <- MkMCT <$> decimalP 3             <?> "Rule MCT"
   transit <- transitFlowP                 <?> "Rule transit"
   (intra, ports) <- case arrPort of
-             Nothing -> defaultP 3 (True, Nothing)
-                    <|> P.string "***" *> pure (False, Nothing)
-             Just a  -> defaultP 3 (True, Just $ MkPOnD a a)
-                    <|> (,) False . Just . MkPOnD a <$> portP
+             Unknown -> defaultP 3 (True, Unknown)
+                    <|> P.string "***" *> pure (False, Unknown)
+             Known a -> defaultP 3 (True, Known $ MkPOnD a a)
+                    <|> (,) False . Known . MkPOnD a <$> portP
        <?> "Rule departure airport"
   arrCarrier <- option 3 carrierP         <?> "Rule arrival carrier"
   depCarrier <- option 3 carrierP         <?> "Rule departure carrier"
@@ -171,26 +173,26 @@ ruleP = do
   validityBegin <- option 7 dateP         <?> "Rule effective date"
   validityEnd <- option 7 dateP           <?> "Rule discontinue date"
   void P.endOfLine                        <?> "Rule end of line"
-  let rank = MkRank $ countOption arrCarrier
-                    + countOption depCarrier
-                    + countOption arrAircraft
-                    + countOption depAircraft
-                    + countOption arrTerminal
-                    + countOption depTerminal
-                    + countOption prevCountry
-                    + countOption prevCity
-                    + countOption prevPort
-                    + countOption nextCountry
-                    + countOption nextCity
-                    + countOption nextPort
-                    + countOption arrFlights
-                    + countOption depFlights
-                    + countOption prevState
-                    + countOption nextState
-                    + countOption prevRegion
-                    + countOption nextRegion
-                    + countOption validityBegin
-                    + countOption validityEnd
+  let rank = MkRank $! countOption arrCarrier
+                     + countOption depCarrier
+                     + countOption arrAircraft
+                     + countOption depAircraft
+                     + countOption arrTerminal
+                     + countOption depTerminal
+                     + countOption prevCountry
+                     + countOption prevCity
+                     + countOption prevPort
+                     + countOption nextCountry
+                     + countOption nextCity
+                     + countOption nextPort
+                     + countOption arrFlights
+                     + countOption depFlights
+                     + countOption prevState
+                     + countOption nextState
+                     + countOption prevRegion
+                     + countOption nextRegion
+                     + countOption validityBegin
+                     + countOption validityEnd
       (arrAircraftBody, arrAircraftType) = fromClass arrAircraft
       (depAircraftBody, depAircraftType) = fromClass depAircraft
       options = MkOptions intra ports
@@ -206,7 +208,7 @@ ruleP = do
                           arrAircraftBody depAircraftBody
                           arrAircraftType depAircraftType
                           validityBegin validityEnd
-  return $ MkRule rank mct options
+  return $! MkRule rank mct options
 
 toRule :: B8.ByteString -> Maybe Rule
 toRule = maybeParse ruleP

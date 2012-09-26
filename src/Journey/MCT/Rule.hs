@@ -1,9 +1,15 @@
+{-# LANGUAGE GADTs #-}
+
 module Journey.MCT.Rule (
     MCT(..)
   , undefMCT
   , Rank(..)
   , undefRank
   , Rule(..)
+  , FlightRange(..)
+  , Option(..)
+  , fromOption
+  , isKnown
   , Options(..)
   , undefRule
   , mkRule
@@ -31,31 +37,46 @@ data Rule = MkRule { rRank :: Rank
                    , rOptions :: Options }
                    deriving (Eq, Show)
 
-data Options = MkOptions { rIntraPort :: Bool
-                         , rAirports :: Maybe POnD
-                         , rArrTerminal :: Maybe Terminal
-                         , rDepTerminal :: Maybe Terminal
-                         , rTransitFlow :: TransitFlow
-                         , rArrCarrier :: Maybe AirlineCode
-                         , rDepCarrier :: Maybe AirlineCode
-                         , rPrevRegion :: Maybe Region
-                         , rNextRegion :: Maybe Region
-                         , rPrevCountry :: Maybe Country
-                         , rNextCountry :: Maybe Country
-                         , rPrevState :: Maybe State
-                         , rNextState :: Maybe State
-                         , rPrevCity :: Maybe City
-                         , rNextCity :: Maybe City
-                         , rPrevPort :: Maybe Port
-                         , rNextPort :: Maybe Port
-                         , rArrFlights :: Maybe (Int, Int)
-                         , rDepFlights :: Maybe (Int, Int)
-                         , rArrAircraftBody :: Maybe AircraftBody
-                         , rDepAircraftBody :: Maybe AircraftBody
-                         , rArrAircraftType :: Maybe AircraftType
-                         , rDepAircraftType :: Maybe AircraftType
-                         , rValidityBegin :: Maybe Day
-                         , rValidityEnd :: Maybe Day 
+data FlightRange = MkFlightRange {-# UNPACK #-} !Int
+                                 {-# UNPACK #-} !Int deriving (Eq, Show)
+
+data Option a = Unknown | Known !a
+                deriving (Eq, Show)
+
+fromOption :: Option a -> Maybe a
+fromOption o = case o of
+                 Unknown -> Nothing
+                 Known a -> Just a
+
+isKnown :: Option a -> Bool
+isKnown Unknown = False
+isKnown _       = True
+
+data Options = MkOptions { rIntraPort :: !Bool
+                         , rAirports :: !(Option POnD)
+                         , rArrTerminal :: !(Option Terminal)
+                         , rDepTerminal :: !(Option Terminal)
+                         , rTransitFlow :: !TransitFlow
+                         , rArrCarrier :: !(Option AirlineCode)
+                         , rDepCarrier :: !(Option AirlineCode)
+                         , rPrevRegion :: !(Option Region)
+                         , rNextRegion :: !(Option Region)
+                         , rPrevCountry :: !(Option Country)
+                         , rNextCountry :: !(Option Country)
+                         , rPrevState :: !(Option State)
+                         , rNextState :: !(Option State)
+                         , rPrevCity :: !(Option City)
+                         , rNextCity :: !(Option City)
+                         , rPrevPort :: !(Option Port)
+                         , rNextPort :: !(Option Port)
+                         , rArrFlights :: !(Option FlightRange)
+                         , rDepFlights :: !(Option FlightRange)
+                         , rArrAircraftBody :: !(Option AircraftBody)
+                         , rDepAircraftBody :: !(Option AircraftBody)
+                         , rArrAircraftType :: !(Option AircraftType)
+                         , rDepAircraftType :: !(Option AircraftType)
+                         , rValidityBegin :: !(Option Day)
+                         , rValidityEnd :: !(Option Day)
                          }
                          deriving (Eq, Show)
 
