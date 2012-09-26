@@ -1,8 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Journey.MCT.OAGParser () where
+module Journey.MCT.OAGParser (
+    readMCTFile
+  , toCountry
+  , toRegion
+  , toState
+  , toTransitFlow
+  , toTerminal
+  , toAircraftBody
+  , toAircraftType
+  , toRule
+  ) where
 
 import Data.Functor ((<$>))
+import Data.Maybe (catMaybes, isJust)
 import Control.Monad (void)
 import Data.Char (ord, chr)
 import Control.Applicative (pure, some, (<*>), (<*), (*>), (<|>))
@@ -10,25 +21,55 @@ import Data.Attoparsec.ByteString (Parser, (<?>))
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Attoparsec.ByteString.Char8 as P
 import qualified Data.Attoparsec.ByteString.Lazy as LP
+import qualified Data.Attoparsec.ByteString as PW
 import qualified Data.ByteString.Lazy as LB
 
 import Journey.Types
 import Journey.Parsers
 import Journey.MCT.Rule
 
-data Database = Database { rules :: [Rule] } deriving Show
+type AircraftClass = Either AircraftBody AircraftType
 
-option :: Parser a -> Parser (Maybe a)
-option p = (Just <$> p) <|> (pure Nothing)
+spaceP :: Int -> Parser ()
+spaceP n = void (P.string $ B8.replicate n ' ')
+       <|> peekEndOfLine <?> "Space padding"
+
+defaultP :: Int -> a -> Parser a
+defaultP n a = spaceP n *> pure a
+
+option :: Int -> Parser a -> Parser (Maybe a)
+option n p = Just <$> p <|> defaultP n Nothing
+
+peekEndOfLine :: Parser ()
+peekEndOfLine = P.endOfInput <|> do
+  c <- P.peekChar
+  case c of
+    Just '\n' -> pure ()
+    _         -> fail "No end of line"
+
+alphaNumPackBounded :: Int -> Int -> Parser Int
+alphaNumPackBounded l h = packBoundedWith l h peekEndOfLine (alphaNumPack l)
 
 countryP :: Parser Country
 countryP = MkCountry <$> packWith 2 alphaPack
 
+-- | Try to convert a ByteString to a Country.
+toCountry :: B8.ByteString -> Maybe Country
+toCountry = maybeParse countryP
+
 regionP :: Parser Region
 regionP = MkRegion <$> packWith 3 alphaPack
 
+-- | Try to convert a ByteString to a Region.
+toRegion :: B8.ByteString -> Maybe Region
+toRegion = maybeParse regionP
+
 stateP :: Parser State
 stateP = MkState <$> packWith 2 alphaPack
+
+-- | Try to convert a ByteString to a State.
+toState :: B8.ByteString -> Maybe State
+toState = maybeParse stateP
 
 transitAreaP :: Parser TransitArea
 transitAreaP = P.char 'D' *> pure Domestic
@@ -37,38 +78,42 @@ transitAreaP = P.char 'D' *> pure Domestic
 transitFlowP :: Parser TransitFlow
 transitFlowP = MkTransitFlow <$> transitAreaP <*> transitAreaP
 
-peekEndOfLine :: Parser ()
-peekEndOfLine = do
-  c <- P.peekChar
-  case c of
-    Just '\n' -> pure ()
-    _         -> fail "No end of line"
+-- | Try to convert a ByteString to a TransitFlow.
+toTransitFlow :: B8.ByteString -> Maybe TransitFlow
+toTransitFlow = maybeParse transitFlowP
 
 terminalP :: Parser Terminal
-terminalP = MkTerminal <$> packBoundedWith 1 2 peekEndOfLine alphaNumPack
+terminalP = MkTerminal <$> alphaNumPackBounded 1 2
+        <?> "Terminal"
+
+-- | Try to convert a ByteString to a Terminal.
+toTerminal :: B8.ByteString -> Maybe Terminal
+toTerminal = maybeParse terminalP
 
 aircraftBodyP :: Parser AircraftBody
-aircraftBodyP = P.string "  N" *> pure Narrow
-            <|> P.string "  W" *> pure Wide
+aircraftBodyP = P.char 'N' *> defaultP 2 Narrow
+            <|> P.char 'W' *> defaultP 2 Wide
+            <?> "Aircraft body"
+
+-- | Try to convert a ByteString to a AircraftBody.
+toAircraftBody :: B8.ByteString -> Maybe AircraftBody
+toAircraftBody = maybeParse aircraftBodyP
 
 aircraftTypeP :: Parser AircraftType
-aircraftTypeP = MkAircraftType <$> packWith 3 alphaNumPack
+aircraftTypeP = MkAircraftType <$> packWith 3 (alphaNumPack 3)
+            <?> "Aircraft type"
+
+-- | Try to convert a ByteString to a AircraftType.
+toAircraftType :: B8.ByteString -> Maybe AircraftType
+toAircraftType = maybeParse aircraftTypeP
 
 -- | Parser for MCT carrier codes.
 carrierP :: Parser AirlineCode
-carrierP = MkAirlineCode <$> packBoundedWith 2 3 peekEndOfLine step <?> "Airline code"
-  where step n = (* 37^n) <$> code n
-        code n | n < 2     = letter <|> digit
-               | otherwise = letter <|> digit <|> space
-        letter = (+11) . subtract (ord 'A') . ord <$> P.satisfy isUpperLetter
-        digit  =  (+1) . subtract (ord '0') . ord <$> P.digit
-        space  = pure 0 <* P.char ' '
-        isUpperLetter c = c >= 'A' && c <= 'Z'
-
-type AircraftClass = Either AircraftBody AircraftType
+carrierP = MkAirlineCode <$> alphaNumPackBounded 2 3
+       <?> "Airline code"
 
 aircraftClassP :: Parser AircraftClass
-aircraftClassP = (Left <$> aircraftBodyP) <|> (Right <$> aircraftTypeP)
+aircraftClassP = Left <$> aircraftBodyP <|> Right <$> aircraftTypeP
 
 fromClass :: Maybe AircraftClass -> (Maybe AircraftBody, Maybe AircraftType)
 fromClass c = case c of
@@ -76,55 +121,79 @@ fromClass c = case c of
                 Just (Left a)  -> (Just a , Nothing)
                 Just (Right a) -> (Nothing, Just a )
 
-spacePadding :: Int -> Parser ()
-spacePadding n = void (P.string $ B8.replicate n ' ')
-             <|> peekEndOfLine <?> "Space padding"
-
 flightsP :: Parser (Maybe (Int, Int))
 flightsP = do
-  begin <- option fnumP <?> "Low bound flight number"
+  begin <- option 4 fnumP <?> "Low bound flight number"
   case begin of
-    Nothing -> spacePadding 4 *>  pure Nothing <?> "High bound flight number (none)"
-    Just a  -> spacePadding 4 *> (pure $ Just (a,a))
-           <|> Just . (,) a <$> fnumP
+    Nothing -> defaultP 4 Nothing      <?> "High bound flight number (none)"
+    Just a  -> defaultP 4 (Just (a,a)) <|> Just . (,) a <$> fnumP
+
+headerP :: Parser ()
+headerP = P.string "UHL"
+       *> P.satisfy (\c -> c == '1' || c == '2')
+       *> PW.skipWhile (not . P.isEndOfLine)
+       *> P.endOfLine *> pure ()
+
+countOption :: Maybe a -> Int
+countOption a = if isJust a then 1; else 0
 
 ruleP :: Parser Rule
 ruleP = do
-  arrPort <- (P.string "***" *> pure Nothing)
-         <|> (Just <$> portP) <?> "Rule arrival airport"
-  void (P.string "   ")       <?> "Rule sequence number"
-  mct <- MkMCT <$> decimalP 3 <?> "Rule MCT"
-  transit <- transitFlowP     <?> "Rule transit"
-  ports <- case arrPort of
-             Nothing -> spacePadding 3 *> (pure $ SameTransitPort Nothing)
-                    <|> P.string "***" *> (pure $ OtherTransitPort Nothing)
-             Just a  -> spacePadding 3 *> (pure $ SameTransitPort arrPort)
-                    <|> otherTransitPort a <$> portP
-           <?> "Rule departure airport"
-  arrCarrier <- option carrierP         <?> "Rule arrival carrier"
-  depCarrier <- option carrierP         <?> "Rule departure carrier"
-  arrAircraft <- option aircraftClassP  <?> "Rule arrival aircraft"
-  depAircraft <- option aircraftClassP  <?> "Rule departure aircraft"
-  arrTerminal <- option terminalP       <?> "Rule arrival terminal"
-  depTerminal <- option terminalP       <?> "Rule departure terminal"
-  prevCountry <- option countryP        <?> "Rule previous country"
-  prevCity <- option portP              <?> "Rule previous city"
-  prevPort <- option portP              <?> "Rule previous airport"
-  nextCountry <- option countryP        <?> "Rule next country"
-  nextCity <- option portP              <?> "Rule next city"
-  nextPort <- option portP              <?> "Rule next airport"
-  arrFlights <- flightsP                <?> "Rule arrival flight numbers"
-  depFlights <- flightsP                <?> "Rule departure flight numbers"
-  prevState <- option stateP            <?> "Rule previous state"
-  nextState <- option stateP            <?> "Rule next state"
-  prevRegion <- option regionP          <?> "Rule previous region"
-  nextRegion <- option regionP          <?> "Rule next region"
-  validityBegin <- option dateP         <?> "Rule effective date"
-  validityEnd <- option dateP           <?> "Rule discontinue date"
-  let rank = MkRank 0
+  arrPort <- P.string "***" *> pure Nothing
+         <|> Just <$> portP               <?> "Rule arrival airport"
+  void (P.string "   ")                   <?> "Rule sequence number"
+  mct <- MkMCT <$> decimalP 3             <?> "Rule MCT"
+  transit <- transitFlowP                 <?> "Rule transit"
+  (intra, ports) <- case arrPort of
+             Nothing -> defaultP 3 (True, Nothing)
+                    <|> P.string "***" *> pure (False, Nothing)
+             Just a  -> defaultP 3 (True, Just $ MkPOnD a a)
+                    <|> (,) False . Just . MkPOnD a <$> portP
+       <?> "Rule departure airport"
+  arrCarrier <- option 3 carrierP         <?> "Rule arrival carrier"
+  depCarrier <- option 3 carrierP         <?> "Rule departure carrier"
+  arrAircraft <- option 3 aircraftClassP  <?> "Rule arrival aircraft"
+  depAircraft <- option 3 aircraftClassP  <?> "Rule departure aircraft"
+  arrTerminal <- option 2 terminalP       <?> "Rule arrival terminal"
+  depTerminal <- option 2 terminalP       <?> "Rule departure terminal"
+  prevCountry <- option 2 countryP        <?> "Rule previous country"
+  prevCity <- option 3 portP              <?> "Rule previous city"
+  prevPort <- option 3 portP              <?> "Rule previous airport"
+  nextCountry <- option 2 countryP        <?> "Rule next country"
+  nextCity <- option 3 portP              <?> "Rule next city"
+  nextPort <- option 3 portP              <?> "Rule next airport"
+  arrFlights <- flightsP                  <?> "Rule arrival flight numbers"
+  depFlights <- flightsP                  <?> "Rule departure flight numbers"
+  prevState <- option 2 stateP            <?> "Rule previous state"
+  nextState <- option 2 stateP            <?> "Rule next state"
+  prevRegion <- option 3 regionP          <?> "Rule previous region"
+  nextRegion <- option 3 regionP          <?> "Rule next region"
+  validityBegin <- option 7 dateP         <?> "Rule effective date"
+  validityEnd <- option 7 dateP           <?> "Rule discontinue date"
+  void P.endOfLine                        <?> "Rule end of line"
+  let rank = MkRank $ countOption arrCarrier
+                    + countOption depCarrier
+                    + countOption arrAircraft
+                    + countOption depAircraft
+                    + countOption arrTerminal
+                    + countOption depTerminal
+                    + countOption prevCountry
+                    + countOption prevCity
+                    + countOption prevPort
+                    + countOption nextCountry
+                    + countOption nextCity
+                    + countOption nextPort
+                    + countOption arrFlights
+                    + countOption depFlights
+                    + countOption prevState
+                    + countOption nextState
+                    + countOption prevRegion
+                    + countOption nextRegion
+                    + countOption validityBegin
+                    + countOption validityEnd
       (arrAircraftBody, arrAircraftType) = fromClass arrAircraft
       (depAircraftBody, depAircraftType) = fromClass depAircraft
-      options = MkOptions ports
+      options = MkOptions intra ports
                           arrTerminal depTerminal
                           transit
                           arrCarrier depCarrier
@@ -139,13 +208,19 @@ ruleP = do
                           validityBegin validityEnd
   return $ MkRule rank mct options
 
-databaseP :: Parser Database
-databaseP = Database <$> some (ruleP <* P.endOfLine) <?> "OAG MCT rules"
+toRule :: B8.ByteString -> Maybe Rule
+toRule = maybeParse ruleP
+
+rowP :: Parser (Maybe Rule)
+rowP = Just <$> ruleP <|> headerP *> pure Nothing
+
+rulesP :: Parser [Rule]
+rulesP = catMaybes <$> some rowP <?> "OAG MCT rules"
 
 -- | Run the MCT parser on the given file.
-loadDatabase :: String -> IO Database
-loadDatabase s = do
-  result <- LP.parse databaseP <$> LB.readFile s
+readMCTFile :: String -> IO [Rule]
+readMCTFile s = do
+  result <- LP.parse rulesP <$> LB.readFile s
   case result of
     LP.Fail left ctx msg -> fail . unlines $ msg:(show $ LB.length left):ctx
     LP.Done _ db         -> return db

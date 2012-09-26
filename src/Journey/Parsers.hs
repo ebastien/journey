@@ -17,6 +17,7 @@ module Journey.Parsers (
     , packBoundedWith
     , alphaPack
     , alphaNumPack
+    , maybeParse
     ) where
 
 import qualified Data.ByteString.Char8 as B8
@@ -39,15 +40,18 @@ import Data.Time.LocalTime (timeOfDayToTime, makeTimeOfDayValid)
 
 import Journey.Types
 
--- | Parser for fixed length decimal numbers
--- with space padding and defaulting to zero.
+-- | Read a decimal number from a whole string.
+readAllDecimal :: Integral a => B8.ByteString -> Maybe a
+readAllDecimal s = case readDecimal s of
+                     Just (d, s') | B8.null s' -> Just d
+                     _                         -> Nothing
+
+-- | Parser for fixed length decimal numbers with space padding.
 paddedDecimalP :: Int -> Parser Int
 paddedDecimalP n = do
   s <- B8.dropWhile (== ' ') <$> P.take n
   fromMaybe (fail ("Decimal parsing failed on " ++ show s))
-          $ (return . fst) <$> if B8.null s
-                                 then Just (0, B8.empty)
-                                 else readDecimal s
+          $ return <$> readAllDecimal s
 
 -- | Parser for fixed length decimal numbers.
 decimalP :: Int -> Parser Int
@@ -72,9 +76,11 @@ alphaPack :: Int -> Parser Int
 alphaPack n = (* 26^n) . subtract (ord 'A') . ord <$> P.satisfy letter
   where letter c = c >= 'A' && c <= 'Z'
 
--- | Parser generator for a packed alphanumeric character.
-alphaNumPack :: Int -> Parser Int
-alphaNumPack n = (* 37^n) <$> letter <|> digit <|> space
+-- | Parser generator for a packed alphanumeric character with space padding.
+alphaNumPack :: Int -> Int -> Parser Int
+alphaNumPack l n = (* 37^n) <$> if n < l
+                                  then letter <|> digit
+                                  else letter <|> digit <|> space
   where letter = (+11) . subtract (ord 'A') . ord <$> P.satisfy isUpperLetter
         digit  =  (+1) . subtract (ord '0') . ord <$> P.digit
         space  = pure 0 <* P.char ' '

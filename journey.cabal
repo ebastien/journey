@@ -56,6 +56,24 @@ Executable itineraries
     Journey.MCT.Attributes,
     Journey.MCT.OAGParser
 
+Executable mctquery
+  Hs-source-dirs:   src
+  Main-is:          MCTQuery.hs
+  Default-Language: Haskell2010
+  GHC-Options: -O2 -rtsopts
+  Build-Depends:
+    base, time, bytestring, bytestring-lexing, attoparsec,
+    vector, text, text-format, containers, IntervalMap
+  Other-Modules:
+    Journey.Parsers,
+    Journey.EnumMap,
+    Journey.Types,
+    Journey.MCT.DecisionTree,
+    Journey.MCT.Rule,
+    Journey.MCT.Tree,
+    Journey.MCT.Attributes,
+    Journey.MCT.OAGParser
+
 Test-Suite tests
   Hs-source-dirs:   src, testsuite/tests
   Type:             exitcode-stdio-1.0

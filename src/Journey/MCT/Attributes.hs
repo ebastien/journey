@@ -16,14 +16,16 @@ import Journey.MCT.DecisionTree
 import Journey.MCT.Tree
 import Journey.MCT.Rule
 
--- | A container for Int attributes.
-instance IsStore MinMCT Int where
-  newtype OptionStore MinMCT Int = MkMCTInt (IM.IntMap MCTTree)
-  emptyStore = MkMCTInt $ IM.empty
-  storeOption (MkMCTInt s) o c = let f _ = c
-                                 in MkMCTInt
-                                  $ IM.insertWith f o (c Empty) s
-  fetchOption (MkMCTInt s) o = maybeToList $ IM.lookup o s
+data OptionSingleton = OptionIsSet
+
+-- | A container for singleton attributes.
+instance IsStore MinMCT OptionSingleton where
+  newtype OptionStore MinMCT OptionSingleton = MkMCTSingle (Maybe MCTTree)
+  emptyStore = MkMCTSingle Nothing
+  storeOption (MkMCTSingle s) _ c = case s of
+                                      Nothing -> MkMCTSingle $ Just (c Empty)
+                                      Just t  -> MkMCTSingle $ Just (c t)
+  fetchOption (MkMCTSingle s) _ = maybeToList s
 
 newtype OptionEnum e = MkOptionEnum { optionEnum :: e }
 
@@ -52,11 +54,19 @@ instance Bounded Day where
   minBound = fromGregorian 1900 1 1
   maxBound = fromGregorian 9999 1 1
 
+data TransitIntraPort
+
+instance IsAttribute MinMCT TransitIntraPort where
+  type Option MinMCT TransitIntraPort = OptionSingleton
+  maybeOption _ k = if rIntraPort (options k)
+                      then Just OptionIsSet
+                      else Nothing
+
 data ConnectingPorts
 
 instance IsAttribute MinMCT ConnectingPorts where
-  type Option MinMCT ConnectingPorts = OptionEnum TransitPorts
-  maybeOption _ k = Just . MkOptionEnum $ rAirports (options k)
+  type Option MinMCT ConnectingPorts = OptionEnum POnD
+  maybeOption _ k = MkOptionEnum <$> rAirports (options k)
 
 data ArrivalTerminal
 
@@ -199,7 +209,8 @@ instance IsAttribute MinMCT ValidityPeriod where
 -- | Structure of MCT attributes.
 attributes :: [MCTStorable]
 attributes = [
-               MkStorable $ empty (undefined::ConnectingPorts)
+               MkStorable $ empty (undefined::TransitIntraPort)
+             , MkStorable $ empty (undefined::ConnectingPorts)
              , MkStorable $ empty (undefined::ArrivalTerminal)
              , MkStorable $ empty (undefined::DepartureTerminal)
              , MkStorable $ empty (undefined::TransitStatus)

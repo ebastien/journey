@@ -25,7 +25,6 @@ module Journey.Types (
     , segmentIdx
     , City, Region(..), State(..), Country(..), TransitArea(..), TransitFlow(..)
     , Terminal(..), AircraftBody(..), AircraftType(..)
-    , TransitPorts(..), otherTransitPort
     ) where
 
 import Data.Word (Word8)
@@ -35,6 +34,22 @@ import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Data.Time.Calendar (Day, addDays)
 import Data.Time.Calendar.WeekDate (toWeekDate)
 
+showAlphaPacked :: Int -> Int -> String
+showAlphaPacked = loop
+  where loop n i | n == 0    = []
+                 | otherwise = chr (r + ord 'A') : loop (n-1) q
+          where (q,r) = divMod i 26
+
+showAlphaNumPacked :: Int -> Int -> String
+showAlphaNumPacked = loop
+    where loop n i | n == 0    = []
+                   | otherwise = c : loop (n-1) q
+            where (q,r) = divMod i 37
+                  c | r == 0    = ' '
+                    | r < 11    = chr (r -  1 + ord '0')
+                    | otherwise = chr (r - 11 + ord 'A')
+
+
 {-------------------------------------------------------------------------------
   Airline code
 -------------------------------------------------------------------------------}
@@ -42,13 +57,7 @@ import Data.Time.Calendar.WeekDate (toWeekDate)
 newtype AirlineCode = MkAirlineCode Int deriving (Eq, Ord, Enum)
 
 instance Show AirlineCode where
-  show (MkAirlineCode a) = loop (3 :: Int) a
-    where loop n i | n == 0    = []
-                   | otherwise = c : loop (n-1) q
-            where (q,r) = divMod i 37
-                  c | r == 0    = ' '
-                    | r < 11    = chr (r -  1 + ord '0')
-                    | otherwise = chr (r - 11 + ord 'A')
+  show (MkAirlineCode a) = showAlphaNumPacked 3 a
 
 {-------------------------------------------------------------------------------
   Port
@@ -57,10 +66,7 @@ instance Show AirlineCode where
 newtype Port = MkPort Int deriving (Eq, Ord, Enum)
 
 instance Show Port where
-  show (MkPort p) = loop (3 :: Int) p
-    where loop n i | n == 0    = []
-                   | otherwise = chr (r + ord 'A') : loop (n-1) q
-            where (q,r) = divMod i 26
+  show (MkPort p) = showAlphaPacked 3 p
 
 -- | Origin & Destination.
 type OnD = (Port, Port)
@@ -69,7 +75,7 @@ type OnD = (Port, Port)
 type Path = [Port]
 
 -- | A packed OnD.
-data POnD = MkPOnD !Port !Port deriving (Show)
+data POnD = MkPOnD !Port !Port deriving (Eq, Show)
 
 instance Enum POnD where
   fromEnum (MkPOnD a b) = (fromEnum a) * (26^(3::Int)) + (fromEnum b)
@@ -193,11 +199,20 @@ sdArrivalTime = spArrivalTime . sdSegment
 
 type City = Port
 
-newtype Country = MkCountry Int deriving (Eq, Ord, Enum, Show)
+newtype Country = MkCountry Int deriving (Eq, Ord, Enum)
 
-newtype Region = MkRegion Int deriving (Eq, Ord, Enum, Show)
+instance Show Country where
+  show (MkCountry p) = showAlphaPacked 2 p
 
-newtype State = MkState Int deriving (Eq, Ord, Enum, Show)
+newtype Region = MkRegion Int deriving (Eq, Ord, Enum)
+
+instance Show Region where
+  show (MkRegion p) = showAlphaPacked 3 p
+
+newtype State = MkState Int deriving (Eq, Ord, Enum)
+
+instance Show State where
+  show (MkState p) = showAlphaPacked 2 p
 
 data TransitArea = Domestic | International deriving (Eq, Ord, Enum, Show)
 
@@ -207,35 +222,14 @@ instance Enum TransitFlow where
   fromEnum (MkTransitFlow a b) = 2 * fromEnum a + fromEnum b
   toEnum i = let (a,b) = divMod i 2 in MkTransitFlow (toEnum a) (toEnum b)
 
-newtype Terminal = MkTerminal Int deriving (Eq, Ord, Enum, Show)
+newtype Terminal = MkTerminal Int deriving (Eq, Ord, Enum)
+
+instance Show Terminal where
+  show (MkTerminal p) = showAlphaNumPacked 2 p
 
 data AircraftBody = Narrow | Wide deriving (Eq, Ord, Enum, Show)
 
-newtype AircraftType = MkAircraftType Int deriving (Eq, Ord, Enum, Show)
+newtype AircraftType = MkAircraftType Int deriving (Eq, Ord, Enum)
 
-{-------------------------------------------------------------------------------
-  Airports in transit
--------------------------------------------------------------------------------}
-
-data TransitPorts = SameTransitPort (Maybe Port)
-                  | OtherTransitPort (Maybe (Port, Port))
-                    deriving (Eq, Show)
-
-otherTransitPort :: Port -> Port -> TransitPorts
-otherTransitPort a b = OtherTransitPort $ Just (a, b)
-
-instance Enum TransitPorts where
-  fromEnum (SameTransitPort Nothing)       = 0
-  fromEnum (OtherTransitPort Nothing)      = 1
-  fromEnum (SameTransitPort (Just a))      = let n = fromEnum a
-                                             in 2 + shiftL n 2
-  fromEnum (OtherTransitPort (Just (a,b))) = let n = (fromEnum a) * 26^(3::Int)
-                                                   + fromEnum b
-                                             in 3 + shiftL n 2
-
-  toEnum i = case (i .&. 3, shiftR i 2) of
-               (0, _) -> SameTransitPort Nothing
-               (1, _) -> OtherTransitPort Nothing
-               (2, n) -> SameTransitPort . Just $ toEnum n
-               (3, n) -> let (a,b) = divMod (shiftR i 2) (26^(3::Int))
-                         in OtherTransitPort . Just $ (toEnum a, toEnum b)
+instance Show AircraftType where
+  show (MkAircraftType p) = showAlphaNumPacked 3 p

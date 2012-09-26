@@ -82,7 +82,7 @@ legPeriodP = do
   suffix <- P.anyChar
   airline <- airlineP
   fnum <- fnumP             <?> "Leg flight number"
-  iviL <- decimalP 2        <?> "Leg itinerary variation identifier (low)"
+  iviL <- decimalP 2        <?> "Leg variation (low)"
   lsn <- decimalP 2         <?> "Leg sequence number"
   void $ P.anyChar
   bdate <- dateP            <?> "Leg period of operation (begin)"
@@ -99,7 +99,7 @@ legPeriodP = do
   void $ P.take 4
   atvar <- timeVariationP   <?> "Leg arrival time variation"
   void $ P.take (2+3+20+5+10+9+2+6)
-  iviH <- paddedDecimalP 1  <?> "Leg itinerary variation identifier (high)"
+  iviH <- decimalP 1 <|> (P.char ' ' *> pure 0) <?> "Leg variation (high)"
   void $ P.take (3+3+3+9+1+1+1+11+1+11+20)
   ddvar <- dateVariationP   <?> "Leg departure date variation"
   advar <- dateVariationP   <?> "Leg arrival date variation"
@@ -121,11 +121,11 @@ segmentP = do
   suffix <- P.anyChar       <?> "Segment operational suffix"
   airline <- airlineP       <?> "Segment airline code"
   fnum <- fnumP             <?> "Segment flight number"
-  iviL <- decimalP 2        <?> "Segment itinerary variation identifier (low)"
+  iviL <- decimalP 2        <?> "Segment variation (low)"
   _lsn <- decimalP 2        <?> "Segment leg sequence number"
   void $ P.anyChar
   void $ P.take 13
-  iviH <- paddedDecimalP 1  <?> "Segment itinerary variation identifier (high)"
+  iviH <- decimalP 1 <|> (P.char ' ' *> pure 0) <?> "Segment variation (high)"
   idx <- pointsIndicatorP   <?> "Segment points indicator"
   dei <- decimalP 3         <?> "Segment DEI"
   bpoint <- portP           <?> "Segment board point"

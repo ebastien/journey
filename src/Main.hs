@@ -11,6 +11,9 @@ import Data.Text.Lazy.Builder (toLazyText)
 import System.Environment (getArgs)
 
 import Journey.Ssim (readSsimFile, ssimSegments)
+import Journey.MCT.OAGParser (readMCTFile)
+import Journey.MCT.Attributes (attributes)
+import Journey.MCT.Tree (fromList)
 import Journey.Parsers (toDate)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency)
@@ -19,8 +22,13 @@ import Journey.Builder (buildAll)
 
 main :: IO ()
 main = do
-  [refsFile, ssimFile, beginDate, endDate] <- getArgs
+  [refsFile, mctFile, ssimFile, beginDate, endDate] <- getArgs
   refs <- loadReferences refsFile
+  mctdb <- fromList attributes <$> readMCTFile mctFile
+  
+  putStrLn "Done"
+  
+  {-
   segdb <- fromSegments . assocToCities refs . ssimSegments <$> readSsimFile ssimFile
 
   let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
@@ -28,3 +36,4 @@ main = do
       dateH = fromJust . toDate $ pack endDate
 
   T.putStr . toLazyText $ foldMap (buildAll segdb covs) [dateL..dateH]
+  -}

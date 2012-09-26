@@ -31,7 +31,8 @@ data Rule = MkRule { rRank :: Rank
                    , rOptions :: Options }
                    deriving (Eq, Show)
 
-data Options = MkOptions { rAirports :: TransitPorts
+data Options = MkOptions { rIntraPort :: Bool
+                         , rAirports :: Maybe POnD
                          , rArrTerminal :: Maybe Terminal
                          , rDepTerminal :: Maybe Terminal
                          , rTransitFlow :: TransitFlow
