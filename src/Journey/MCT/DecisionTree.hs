@@ -16,6 +16,7 @@ module Journey.MCT.DecisionTree (
 
 import qualified Data.Map as M
 import Data.Monoid (Monoid, mappend, mempty)
+import Data.List (foldl')
 import Data.Foldable (foldMap)
 import Prelude hiding (lookup)
 
@@ -56,13 +57,13 @@ fetch (MkStore a w s) k c = (c w) `mappend` m
               Nothing -> mempty
 
 -- | An existential container for elements 'k'.
-data Storable k = forall a . IsAttribute k a => MkStorable (Store k a)
+data Storable k = forall a . IsAttribute k a => MkStorable !(Store k a)
 
 -- instance Show k => Show (Storable k) where
 --   show (MkStorable s) = show s
 
 -- | A decision tree.
-data Tree k = Node (Storable k) k
+data Tree k = Node !(Storable k) !k
             | Leaf [k]
             | Empty
 --            deriving (Show)
@@ -74,7 +75,7 @@ insert defs tree rule = walk defs tree
           let rs = case t of
                      Leaf xs -> xs
                      Empty   -> []
-          in Leaf $ rule : rs
+          in Leaf $! rule : rs
         walk (MkStorable d:ds) t =
           let (z, r') = case t of
                           Empty                 -> ( MkStorable . store d rule
@@ -100,4 +101,4 @@ lookup = lookupWith (:[]) $ const True
 
 -- | Creates a decision tree from a structure of attributes and a list of elements.
 fromList :: (Monoid k) => [Storable k] -> [k] -> Tree k
-fromList defs = foldl (insert defs) Empty
+fromList defs = foldl' (insert defs) Empty
