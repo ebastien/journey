@@ -19,8 +19,8 @@ import Journey.MCT.Rule
 data OptionSingleton = OptionIsSet
 
 -- | A container for singleton attributes.
-instance IsStore MinMCT OptionSingleton where
-  newtype OptionStore MinMCT OptionSingleton = MkMCTSingle (Maybe MCTTree)
+instance IsStore Rule OptionSingleton where
+  newtype OptionStore Rule OptionSingleton = MkMCTSingle (Maybe MCTTree)
   emptyStore = MkMCTSingle Nothing
   storeOption (MkMCTSingle s) _ c = case s of
                                       Nothing -> MkMCTSingle $ Just (c Empty)
@@ -30,8 +30,8 @@ instance IsStore MinMCT OptionSingleton where
 newtype OptionEnum e = MkOptionEnum { optionEnum :: e }
 
 -- | A container for Enum attributes.
-instance Enum e => IsStore MinMCT (OptionEnum e) where
-  newtype OptionStore MinMCT (OptionEnum e) = MkMCTEnum (EM.EnumMap e MCTTree)
+instance Enum e => IsStore Rule (OptionEnum e) where
+  newtype OptionStore Rule (OptionEnum e) = MkMCTEnum (EM.EnumMap e MCTTree)
   emptyStore = MkMCTEnum $ EM.empty
   storeOption (MkMCTEnum s) o c = let f _ = c
                                   in MkMCTEnum
@@ -39,18 +39,13 @@ instance Enum e => IsStore MinMCT (OptionEnum e) where
   fetchOption (MkMCTEnum s) o = maybeToList $ EM.lookup (optionEnum o) s
 
 -- | A container for range attributes.
-instance Ord o => IsStore MinMCT (PM.Interval o) where
-  newtype OptionStore MinMCT (PM.Interval o) = MkMCTRange (PM.IntervalMap o MCTTree)
+instance Ord o => IsStore Rule (PM.Interval o) where
+  newtype OptionStore Rule (PM.Interval o) = MkMCTRange (PM.IntervalMap o MCTTree)
   emptyStore = MkMCTRange $ PM.empty
   storeOption (MkMCTRange s) o c = let f _ = c
                                    in MkMCTRange
                                     $ PM.insertWith f o (c Empty) s
   fetchOption (MkMCTRange s) o = map snd $ PM.intersecting s o
-
-options :: MinMCT -> Options
-options = rOptions . getMinMCT
-
-
 
 instance Bounded Day where
   minBound = fromGregorian 1900 1 1
@@ -58,153 +53,153 @@ instance Bounded Day where
 
 data TransitIntraPort
 
-instance IsAttribute MinMCT TransitIntraPort where
-  type Option MinMCT TransitIntraPort = OptionSingleton
-  maybeOption _ k = if rIntraPort (options k)
+instance IsAttribute Rule TransitIntraPort where
+  type Option Rule TransitIntraPort = OptionSingleton
+  maybeOption _ k = if rIntraPort (rOptions k)
                       then Just OptionIsSet
                       else Nothing
 
 data ConnectingPorts
 
-instance IsAttribute MinMCT ConnectingPorts where
-  type Option MinMCT ConnectingPorts = OptionEnum POnD
-  maybeOption _ k = MkOptionEnum <$> fromOption (rAirports $ options k)
+instance IsAttribute Rule ConnectingPorts where
+  type Option Rule ConnectingPorts = OptionEnum POnD
+  maybeOption _ k = MkOptionEnum <$> fromOption (rAirports $ rOptions k)
 
 data ArrivalTerminal
 
-instance IsAttribute MinMCT ArrivalTerminal where
-  type Option MinMCT ArrivalTerminal = OptionEnum Terminal
-  maybeOption _ k = MkOptionEnum <$> fromOption (rArrTerminal $ options k)
+instance IsAttribute Rule ArrivalTerminal where
+  type Option Rule ArrivalTerminal = OptionEnum Terminal
+  maybeOption _ k = MkOptionEnum <$> fromOption (rArrTerminal $ rOptions k)
   
 data DepartureTerminal
 
-instance IsAttribute MinMCT DepartureTerminal where
-  type Option MinMCT DepartureTerminal = OptionEnum Terminal
-  maybeOption _ k = MkOptionEnum <$> fromOption (rDepTerminal $ options k)
+instance IsAttribute Rule DepartureTerminal where
+  type Option Rule DepartureTerminal = OptionEnum Terminal
+  maybeOption _ k = MkOptionEnum <$> fromOption (rDepTerminal $ rOptions k)
 
 data TransitStatus
 
-instance IsAttribute MinMCT TransitStatus where
-  type Option MinMCT TransitStatus = OptionEnum TransitFlow
-  maybeOption _ k = Just . MkOptionEnum $ rTransitFlow (options k)
+instance IsAttribute Rule TransitStatus where
+  type Option Rule TransitStatus = OptionEnum TransitFlow
+  maybeOption _ k = Just . MkOptionEnum $ rTransitFlow (rOptions k)
 
 data ArrivalCarrier
 
-instance IsAttribute MinMCT ArrivalCarrier where
-  type Option MinMCT ArrivalCarrier = OptionEnum AirlineCode
-  maybeOption _ k = MkOptionEnum <$> fromOption (rArrCarrier $ options k)
+instance IsAttribute Rule ArrivalCarrier where
+  type Option Rule ArrivalCarrier = OptionEnum AirlineCode
+  maybeOption _ k = MkOptionEnum <$> fromOption (rArrCarrier $ rOptions k)
 
 data DepartureCarrier
 
-instance IsAttribute MinMCT DepartureCarrier where
-  type Option MinMCT DepartureCarrier = OptionEnum AirlineCode
-  maybeOption _ k = MkOptionEnum <$> fromOption (rDepCarrier $ options k)
+instance IsAttribute Rule DepartureCarrier where
+  type Option Rule DepartureCarrier = OptionEnum AirlineCode
+  maybeOption _ k = MkOptionEnum <$> fromOption (rDepCarrier $ rOptions k)
 
 data PreviousRegion
 
-instance IsAttribute MinMCT PreviousRegion where
-  type Option MinMCT PreviousRegion = OptionEnum Region
-  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevRegion $ options k)
+instance IsAttribute Rule PreviousRegion where
+  type Option Rule PreviousRegion = OptionEnum Region
+  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevRegion $ rOptions k)
 
 data NextRegion
 
-instance IsAttribute MinMCT NextRegion where
-  type Option MinMCT NextRegion = OptionEnum Region
-  maybeOption _ k = MkOptionEnum <$> fromOption (rNextRegion $ options k)
+instance IsAttribute Rule NextRegion where
+  type Option Rule NextRegion = OptionEnum Region
+  maybeOption _ k = MkOptionEnum <$> fromOption (rNextRegion $ rOptions k)
 
 data PreviousCountry
 
-instance IsAttribute MinMCT PreviousCountry where
-  type Option MinMCT PreviousCountry = OptionEnum Country
-  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevCountry $ options k)
+instance IsAttribute Rule PreviousCountry where
+  type Option Rule PreviousCountry = OptionEnum Country
+  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevCountry $ rOptions k)
 
 data NextCountry
 
-instance IsAttribute MinMCT NextCountry where
-  type Option MinMCT NextCountry = OptionEnum Country
-  maybeOption _ k = MkOptionEnum <$> fromOption (rNextCountry $ options k)
+instance IsAttribute Rule NextCountry where
+  type Option Rule NextCountry = OptionEnum Country
+  maybeOption _ k = MkOptionEnum <$> fromOption (rNextCountry $ rOptions k)
 
 data PreviousState
 
-instance IsAttribute MinMCT PreviousState where
-  type Option MinMCT PreviousState = OptionEnum State
-  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevState $ options k)
+instance IsAttribute Rule PreviousState where
+  type Option Rule PreviousState = OptionEnum State
+  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevState $ rOptions k)
 
 data NextState
 
-instance IsAttribute MinMCT NextState where
-  type Option MinMCT NextState = OptionEnum State
-  maybeOption _ k = MkOptionEnum <$> fromOption (rNextState $ options k)
+instance IsAttribute Rule NextState where
+  type Option Rule NextState = OptionEnum State
+  maybeOption _ k = MkOptionEnum <$> fromOption (rNextState $ rOptions k)
 
 data PreviousCity
 
-instance IsAttribute MinMCT PreviousCity where
-  type Option MinMCT PreviousCity = OptionEnum City
-  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevCity $ options k)
+instance IsAttribute Rule PreviousCity where
+  type Option Rule PreviousCity = OptionEnum City
+  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevCity $ rOptions k)
 
 data NextCity
 
-instance IsAttribute MinMCT NextCity where
-  type Option MinMCT NextCity = OptionEnum City
-  maybeOption _ k = MkOptionEnum <$> fromOption (rNextCity $ options k)
+instance IsAttribute Rule NextCity where
+  type Option Rule NextCity = OptionEnum City
+  maybeOption _ k = MkOptionEnum <$> fromOption (rNextCity $ rOptions k)
 
 data PreviousAirport
 
-instance IsAttribute MinMCT PreviousAirport where
-  type Option MinMCT PreviousAirport = OptionEnum Port
-  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevPort $ options k)
+instance IsAttribute Rule PreviousAirport where
+  type Option Rule PreviousAirport = OptionEnum Port
+  maybeOption _ k = MkOptionEnum <$> fromOption (rPrevPort $ rOptions k)
 
 data NextAirport
 
-instance IsAttribute MinMCT NextAirport where
-  type Option MinMCT NextAirport = OptionEnum Port
-  maybeOption _ k = MkOptionEnum <$> fromOption (rNextPort $ options k)
+instance IsAttribute Rule NextAirport where
+  type Option Rule NextAirport = OptionEnum Port
+  maybeOption _ k = MkOptionEnum <$> fromOption (rNextPort $ rOptions k)
 
 data ArrivalFlightRange
 
 fromFlightRange :: FlightRange -> PM.Interval Int
 fromFlightRange (MkFlightRange a b) = PM.ClosedInterval a b
 
-instance IsAttribute MinMCT ArrivalFlightRange where
-  type Option MinMCT ArrivalFlightRange = PM.Interval Int
-  maybeOption _ k = fromFlightRange <$> fromOption (rArrFlights $ options k)
+instance IsAttribute Rule ArrivalFlightRange where
+  type Option Rule ArrivalFlightRange = PM.Interval Int
+  maybeOption _ k = fromFlightRange <$> fromOption (rArrFlights $ rOptions k)
 
 data DepartureFlightRange
 
-instance IsAttribute MinMCT DepartureFlightRange where
-  type Option MinMCT DepartureFlightRange = PM.Interval Int
-  maybeOption _ k = fromFlightRange <$> fromOption (rDepFlights $ options k)
+instance IsAttribute Rule DepartureFlightRange where
+  type Option Rule DepartureFlightRange = PM.Interval Int
+  maybeOption _ k = fromFlightRange <$> fromOption (rDepFlights $ rOptions k)
 
 data ArrivalAircraftBody
 
-instance IsAttribute MinMCT ArrivalAircraftBody where
-  type Option MinMCT ArrivalAircraftBody = OptionEnum AircraftBody
-  maybeOption _ k = MkOptionEnum <$> fromOption (rArrAircraftBody $ options k)
+instance IsAttribute Rule ArrivalAircraftBody where
+  type Option Rule ArrivalAircraftBody = OptionEnum AircraftBody
+  maybeOption _ k = MkOptionEnum <$> fromOption (rArrAircraftBody $ rOptions k)
 
 data DepartureAircraftBody
 
-instance IsAttribute MinMCT DepartureAircraftBody where
-  type Option MinMCT DepartureAircraftBody = OptionEnum AircraftBody
-  maybeOption _ k = MkOptionEnum <$> fromOption (rDepAircraftBody $ options k)
+instance IsAttribute Rule DepartureAircraftBody where
+  type Option Rule DepartureAircraftBody = OptionEnum AircraftBody
+  maybeOption _ k = MkOptionEnum <$> fromOption (rDepAircraftBody $ rOptions k)
 
 data ArrivalAircraftType
 
-instance IsAttribute MinMCT ArrivalAircraftType where
-  type Option MinMCT ArrivalAircraftType = OptionEnum AircraftType
-  maybeOption _ k = MkOptionEnum <$> fromOption (rArrAircraftType $ options k)
+instance IsAttribute Rule ArrivalAircraftType where
+  type Option Rule ArrivalAircraftType = OptionEnum AircraftType
+  maybeOption _ k = MkOptionEnum <$> fromOption (rArrAircraftType $ rOptions k)
 
 data DepartureAircraftType
 
-instance IsAttribute MinMCT DepartureAircraftType where
-  type Option MinMCT DepartureAircraftType = OptionEnum AircraftType
-  maybeOption _ k = MkOptionEnum <$> fromOption (rDepAircraftType $ options k)
+instance IsAttribute Rule DepartureAircraftType where
+  type Option Rule DepartureAircraftType = OptionEnum AircraftType
+  maybeOption _ k = MkOptionEnum <$> fromOption (rDepAircraftType $ rOptions k)
 
 data ValidityPeriod
 
-instance IsAttribute MinMCT ValidityPeriod where
-  type Option MinMCT ValidityPeriod = PM.Interval Day
+instance IsAttribute Rule ValidityPeriod where
+  type Option Rule ValidityPeriod = PM.Interval Day
   
-  maybeOption _ k = let o = options k
+  maybeOption _ k = let o = rOptions k
                     in case (rValidityBegin o, rValidityEnd o) of
                        (Unknown, Unknown) -> Nothing
                        (Unknown, Known b) -> Just $ PM.ClosedInterval minBound b

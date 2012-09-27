@@ -18,40 +18,42 @@ import qualified Journey.MCT.DecisionTree as DT
 import Journey.MCT.Rule
 
 -- | The Rule monoid under minimum connecting time.
-newtype MinMCT = MkMinMCT { getMinMCT :: Rule }
-                          deriving (Show)
+data MinMCT = MkMinMCT { mmMCT :: MCT
+                       , mmRank :: Rank } deriving (Show)
 
 instance Monoid MinMCT where
-  mempty = MkMinMCT undefRule
-  mappend i@(MkMinMCT a)
-          j@(MkMinMCT b) | rMCT a < rMCT b = i
-                         | otherwise       = j
+  mempty = MkMinMCT undefMCT undefRank
+  mappend i@(MkMinMCT a _) j@(MkMinMCT b _) | a < b     = i
+                                            | otherwise = j
+
+instance DT.Monoidable Rule where
+  type DepthMonoid Rule = MinMCT
+  mdepth r = MkMinMCT (rMCT r) (rRank r)
 
 -- | The Rule monoid under maximum rank.
-newtype MaxRank = MkMaxRank { getMaxRank :: Rule }
-                            deriving (Show)
+data MaxRank = MkMaxRank { mrRank :: Rank
+                         , mrMCT :: MCT } deriving (Show)
 
 instance Monoid MaxRank where
-  mempty = MkMaxRank undefRule
-  mappend i@(MkMaxRank x)
-          j@(MkMaxRank y) | rRank x > rRank y = i
-                          | otherwise         = j
+  mempty = MkMaxRank undefRank undefMCT
+  mappend i@(MkMaxRank x _) j@(MkMaxRank y _) | x > y     = i
+                                              | otherwise = j
 
 -- | A decision tree on minimum connecting times.
-type MCTTree = DT.Tree MinMCT
+type MCTTree = DT.Tree Rule
 
 -- | The 'pruneLookup' function returns the best matching element
 --   or nothing, discarding branches by MCT.
-pruneLookup :: MCTTree -> Rule -> Maybe Rule
-pruneLookup t i = if notfound; then Nothing; else Just result
-  where result = getMaxRank $ DT.lookupWith mlift keep t (MkMinMCT i)
-        notfound = rRank result == undefRank
-        mlift (MkMinMCT j) = MkMaxRank j
-        keep (MkMinMCT a) = rMCT i >= rMCT a
+pruneLookup :: MCTTree -> Rule -> Maybe MCT
+pruneLookup tree rule = if notfound; then Nothing; else Just $ mrMCT result
+  where result = DT.lookupWith mleaf keep tree rule
+        notfound = mrRank result == undefRank
+        mleaf (MkMinMCT a b) = MkMaxRank b a
+        keep (MkMinMCT a _) = rMCT rule >= a
 
 -- | An existential container for minimum connecting times.
-type MCTStorable = DT.Storable MinMCT
+type MCTStorable = DT.Storable Rule
 
 -- | Create a decision tree from a list of rules.
 fromList :: [MCTStorable] -> [Rule] -> MCTTree
-fromList s rs = DT.fromList s $ map MkMinMCT rs
+fromList s rs = DT.fromList s rs

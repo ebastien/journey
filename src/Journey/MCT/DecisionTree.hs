@@ -12,6 +12,7 @@ module Journey.MCT.DecisionTree (
     , IsAttribute(..), IsStore(..)
     , Storable(..)
     , Store(..)
+    , Monoidable(..)
     ) where
 
 import qualified Data.Map as M
@@ -62,43 +63,47 @@ data Storable k = forall a . IsAttribute k a => MkStorable !(Store k a)
 -- instance Show k => Show (Storable k) where
 --   show (MkStorable s) = show s
 
+class Monoidable k where
+  type DepthMonoid k :: *
+  mdepth :: k -> DepthMonoid k
+
 -- | A decision tree.
-data Tree k = Node !(Storable k) !k
-            | Leaf [k]
+data Tree k = Node !(Storable k) !(DepthMonoid k)
+            | Leaf !(DepthMonoid k)
             | Empty
 --            deriving (Show)
 
 -- | Insert an element into a decision tree.
-insert :: (Monoid k) => [Storable k] -> Tree k -> k -> Tree k
+insert :: (Monoidable k, Monoid (DepthMonoid k))
+       => [Storable k] -> Tree k -> k -> Tree k
 insert defs tree rule = walk defs tree
   where walk [] t =
-          let rs = case t of
-                     Leaf xs -> xs
-                     Empty   -> []
-          in Leaf $! rule : rs
+          let r = case t of
+                    Leaf x -> x
+                    Empty  -> mempty
+          in Leaf $! m `mappend` r
         walk (MkStorable d:ds) t =
           let (z, r') = case t of
                           Empty                 -> ( MkStorable . store d rule
-                                                   , rule )
+                                                   , m )
                           Node (MkStorable s) r -> ( MkStorable . store s rule
-                                                   , rule `mappend` r )
+                                                   , m `mappend` r )
           in Node (z $ walk ds) r'
+        m = mdepth rule
 
 -- | Lookup matching elements in a tree.
-lookupWith :: (Monoid m) => (k -> m)
-                         -> (k -> Bool)
-                         -> Tree k
-                         -> k
-                         -> m
-lookupWith mlift pred tree rule = walk tree
-  where walk (Leaf xs)                        = foldMap mlift $ filter pred xs
-        walk (Node (MkStorable s) l) | pred l = fetch s rule walk
+lookupWith :: Monoid m
+           => (DepthMonoid k -> m) -> (DepthMonoid k -> Bool) -> Tree k -> k -> m
+lookupWith mleaf pred tree rule = walk tree
+  where walk (Leaf r)                | pred r = mleaf r
+        walk (Node (MkStorable s) r) | pred r = fetch s rule walk
         walk _                                = mempty
 
 -- | Returns the list of all matching elements.
-lookup :: Tree k -> k -> [k]
+lookup :: Tree k -> k -> [DepthMonoid k]
 lookup = lookupWith (:[]) $ const True
 
 -- | Creates a decision tree from a structure of attributes and a list of elements.
-fromList :: (Monoid k) => [Storable k] -> [k] -> Tree k
+fromList :: (Monoidable k, Monoid (DepthMonoid k))
+         => [Storable k] -> [k] -> Tree k
 fromList defs = foldl' (insert defs) Empty

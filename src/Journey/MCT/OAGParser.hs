@@ -35,7 +35,7 @@ spaceP n = void (P.string $ B8.replicate n ' ')
        <|> peekEndOfLine <?> "Space padding"
 
 defaultP :: Int -> a -> Parser a
-defaultP n a = spaceP n *> (pure $! a)
+defaultP n a = spaceP n *> pure a
 
 option :: Int -> Parser a -> Parser (Option a)
 option n p = Known <$> p <|> defaultP n Unknown

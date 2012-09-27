@@ -15,4 +15,5 @@ main :: IO ()
 main = do
   [mctFile, rule] <- getArgs
   mctdb <- fromList attributes <$> readMCTFile mctFile
-  putStrLn . show $ pruneLookup mctdb (fromJust . toRule . pack $ rule ++ "\n")
+  let rule' = fromJust . toRule . pack $ rule ++ "\n"
+  putStrLn . show $ pruneLookup mctdb rule'

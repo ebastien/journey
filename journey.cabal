@@ -79,7 +79,9 @@ Test-Suite tests
   Type:             exitcode-stdio-1.0
   Main-is:          Tests.hs
   Default-Language: Haskell2010
+  GHC-Options: -O2 -fprof-auto -rtsopts
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, IntervalMap,
-    test-framework, QuickCheck, test-framework-quickcheck2
+    test-framework, QuickCheck, test-framework-quickcheck2,
+    criterion
