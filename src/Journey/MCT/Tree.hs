@@ -18,8 +18,8 @@ import qualified Journey.MCT.DecisionTree as DT
 import Journey.MCT.Rule
 
 -- | The Rule monoid under minimum connecting time.
-data MinMCT = MkMinMCT { mmMCT :: MCT
-                       , mmRank :: Rank } deriving (Show)
+data MinMCT = MkMinMCT { mmMCT :: !MCT
+                       , mmRank :: !Rank } deriving (Show)
 
 instance Monoid MinMCT where
   mempty = MkMinMCT undefMCT undefRank
@@ -31,8 +31,8 @@ instance DT.Monoidable Rule where
   mdepth r = MkMinMCT (rMCT r) (rRank r)
 
 -- | The Rule monoid under maximum rank.
-data MaxRank = MkMaxRank { mrRank :: Rank
-                         , mrMCT :: MCT } deriving (Show)
+data MaxRank = MkMaxRank { mrRank :: !Rank
+                         , mrMCT :: !MCT } deriving (Show)
 
 instance Monoid MaxRank where
   mempty = MkMaxRank undefRank undefMCT

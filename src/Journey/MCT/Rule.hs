@@ -14,7 +14,7 @@ module Journey.MCT.Rule (
   , mkRule
   , mkQuery
   ) where
-  
+
 import Data.Time.Calendar (Day)
 
 import Journey.Types
