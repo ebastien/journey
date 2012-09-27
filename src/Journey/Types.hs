@@ -7,9 +7,12 @@ module Journey.Types (
     , OnD
     , POnD(..)
     , Path
-    , PeriodBoundary
-    , Dow(..)
+    , Dow
+    , mkDowValid
+    , everyDow
     , Period
+    , maxPeriod
+    , intersect
     , withinPeriod
     , TimeDuration
     , TimeVariation
@@ -18,6 +21,8 @@ module Journey.Types (
     , LegPeriod(..)
     , SegmentLeg(..)
     , SegmentPeriod
+    , spPeriod
+    , updatePeriod
     , spDepartureTime , spArrivalTime , spArrivalDateVariation, spElapsedTime
     , SegmentDate(..)
     , sdDepartureTime, sdArrivalDate, sdArrivalTime
@@ -28,10 +33,10 @@ module Journey.Types (
     ) where
 
 import Data.Word (Word8)
-import Data.Bits (testBit, shiftL, shiftR, (.&.))
+import Data.Bits (testBit, shiftL, shiftR, rotateR, (.&.), (.|.))
 import Data.Char (chr, ord)
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
-import Data.Time.Calendar (Day, addDays)
+import Data.Time.Calendar (Day, addDays, fromGregorian)
 import Data.Time.Calendar.WeekDate (toWeekDate)
 
 showAlphaPacked :: Int -> Int -> String
@@ -92,26 +97,42 @@ instance Show Dow where
     where step n | testBit w n = chr (n + ord '1')
                  | otherwise   = ' '
 
+mkDowValid :: Word8 -> Dow
+mkDowValid d = MkDow $ d .|. (shiftL d 7)
+
 -- | Lookup a single day of week.
 lookupDow :: Int -> Dow -> Bool
 lookupDow n (MkDow w) = testBit w (n-1)
+
+everyDow :: Dow
+everyDow = MkDow 0xFF
 
 {-------------------------------------------------------------------------------
   Period
 -------------------------------------------------------------------------------}
 
-type PeriodBoundary = Maybe Day
+instance Bounded Day where
+  minBound = fromGregorian 1900 1 1
+  maxBound = fromGregorian 9999 1 1
 
-type Period = (Day, PeriodBoundary, Dow)
+type Period = (Day, Day, Dow)
 
 -- | Test if a day is within a period.
 withinPeriod :: Period -> Day -> Bool
 withinPeriod (l,h,o) d = low && high && dow
   where low = d >= l
-        high = case h of
-                 Just h' -> d <= h'
-                 Nothing -> True
+        high = d <= h
         dow = let (_, _, n) = toWeekDate d in lookupDow n o
+
+maxPeriod :: Period
+maxPeriod = (minBound, maxBound, everyDow)
+
+intersect :: Period -> Period -> Int -> Maybe Period
+intersect (d1, e1, MkDow w1) (d2, e2, MkDow w2) offset =
+  if d <= e && w /= 0; then Just (d, e, MkDow w); else Nothing
+  where d = max d1 d2
+        e = min e1 e2
+        w = w1 .&. (rotateR w2 offset)
 
 {-------------------------------------------------------------------------------
   Date and time
@@ -159,6 +180,14 @@ data SegmentLeg = MkSegmentLeg { slLeg :: LegPeriod
 
 -- | A segment as a sequence of legs periods.
 type SegmentPeriod = [SegmentLeg]
+
+spPeriod :: SegmentPeriod -> Period
+spPeriod = lpPeriod . slLeg . head
+
+updatePeriod :: Period -> SegmentPeriod -> SegmentPeriod
+updatePeriod p = map u1
+  where u1 sl = sl { slLeg = u2 (slLeg sl) }
+        u2 lp = lp { lpPeriod = p }
 
 spDepartureTime :: SegmentPeriod -> ScheduleTime
 spDepartureTime = lpDepartureTime . slLeg . head

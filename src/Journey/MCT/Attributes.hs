@@ -47,10 +47,6 @@ instance Ord o => IsStore Rule (PM.Interval o) where
                                     $ PM.insertWith f o (c Empty) s
   fetchOption (MkMCTRange s) o = map snd $ PM.intersecting s o
 
-instance Bounded Day where
-  minBound = fromGregorian 1900 1 1
-  maxBound = fromGregorian 9999 1 1
-
 data TransitIntraPort
 
 instance IsAttribute Rule TransitIntraPort where

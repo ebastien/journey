@@ -23,10 +23,7 @@ import Data.Time.Clock (secondsToDiffTime)
 import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.LocalTime (timeOfDayToTime, makeTimeOfDayValid)
 
-import Journey.Types ( AirlineCode(..), LegPeriod(..), SegmentPeriod, SegmentDEI
-                     , segmentIdx, SegmentLeg(..), Flight(..), Port(..), Dow(..)
-                     , PeriodBoundary, TimeVariation, ScheduleTime, OnD)
-
+import Journey.Types
 import Journey.Parsers
 
 {-------------------------------------------------------------------------------

@@ -115,7 +115,7 @@ toPort = maybeParse portP
 
 -- | Parser for days of week.
 dowP :: Parser Dow
-dowP = MkDow <$> packWith 7 step <?>  "Days of week"
+dowP = mkDowValid <$> packWith 7 step <?>  "Days of week"
   where step n = P.char (chr $ ord '1' + n) *> (pure $ bit n)
              <|> P.char ' ' *> (pure 0)
 
@@ -151,16 +151,16 @@ toDate :: B8.ByteString -> Maybe Day
 toDate = maybeParse dateP
 
 -- | Parser for period boundaries.
-periodBoundaryP :: Parser PeriodBoundary
+periodBoundaryP :: Parser Day
 periodBoundaryP = do
   d <- dayP; m <- monthP; y <- yearP
   if d == 0 && m == 0
-    then return Nothing
+    then return maxBound
     else fromMaybe (fail "Period boundary parsing failed")
-                 $ (return . Just) <$> (fromGregorianValid y m d)
+                 $ return <$> (fromGregorianValid y m d)
 
 -- | Try to convert a ByteString to a period boundary.
-toPeriodBoundary :: B8.ByteString -> Maybe PeriodBoundary
+toPeriodBoundary :: B8.ByteString -> Maybe Day
 toPeriodBoundary = maybeParse periodBoundaryP
 
 -- | Parser for time variations.
