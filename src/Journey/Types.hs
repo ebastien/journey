@@ -107,7 +107,7 @@ lookupDow :: Int -> Dow -> Bool
 lookupDow n (MkDow w) = testBit w (n-1)
 
 everyDow :: Dow
-everyDow = MkDow 0xFF
+everyDow = MkDow 0x7F
 
 {-------------------------------------------------------------------------------
   Period
