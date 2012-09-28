@@ -122,7 +122,7 @@ connect' :: Period
 connect' p t0 cmin cmax seg = getFirst $ foldMap match (zip dates waits)
   where match (d,w) = case intersect p (spPeriod seg) d of
                         Nothing -> First Nothing
-                        Just p' -> First $ Just (updatePeriod p' seg, w)
+                        Just p' -> First $ Just (alterPeriod p' seg, w)
         dates = [0..] :: [Int]
         waits = takeWhile (<cmax) . dropWhile (<cmin) $ map wait dates
         wait d = t - t0 + secondsToDiffTime (fromIntegral d * 86400)

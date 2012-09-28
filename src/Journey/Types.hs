@@ -22,9 +22,11 @@ module Journey.Types (
     , SegmentLeg(..)
     , SegmentPeriod
     , spPeriod
-    , updatePeriod
+    , alterPeriod
+    , spBoard, spOff
     , spDepartureTime , spArrivalTime , spArrivalDateVariation, spElapsedTime
     , SegmentDate(..)
+    , sdBoard, sdOff
     , sdDepartureTime, sdArrivalDate, sdArrivalTime
     , SegmentDEI
     , segmentIdx
@@ -33,7 +35,7 @@ module Journey.Types (
     ) where
 
 import Data.Word (Word8)
-import Data.Bits (testBit, shiftL, shiftR, rotateR, (.&.), (.|.))
+import Data.Bits (testBit, shift, (.&.), (.|.))
 import Data.Char (chr, ord)
 import Data.Time.Clock (DiffTime, secondsToDiffTime)
 import Data.Time.Calendar (Day, addDays, fromGregorian)
@@ -98,7 +100,7 @@ instance Show Dow where
                  | otherwise   = ' '
 
 mkDowValid :: Word8 -> Dow
-mkDowValid d = MkDow $ d .|. (shiftL d 7)
+mkDowValid d = MkDow $ d .&. 0x7F
 
 -- | Lookup a single day of week.
 lookupDow :: Int -> Dow -> Bool
@@ -127,12 +129,17 @@ withinPeriod (l,h,o) d = low && high && dow
 maxPeriod :: Period
 maxPeriod = (minBound, maxBound, everyDow)
 
+rotateDow_ :: Word8 -> Int -> Word8
+rotateDow_ d n | n >= 0 = shift d n' .|. shift d (n' - 7)
+  where n' = n `mod` 7
+
 intersect :: Period -> Period -> Int -> Maybe Period
 intersect (d1, e1, MkDow w1) (d2, e2, MkDow w2) offset =
   if d <= e && w /= 0; then Just (d, e, MkDow w); else Nothing
-  where d = max d1 d2
-        e = min e1 e2
-        w = w1 .&. (rotateR w2 offset)
+  where d = max (addDays n d1) $ d2 
+        e = min (addDays n e1) $ e2
+        w = w1 .&. (rotateDow_ w2 offset)
+        n = fromIntegral offset
 
 {-------------------------------------------------------------------------------
   Date and time
@@ -181,11 +188,17 @@ data SegmentLeg = MkSegmentLeg { slLeg :: LegPeriod
 -- | A segment as a sequence of legs periods.
 type SegmentPeriod = [SegmentLeg]
 
+spBoard :: SegmentPeriod -> Port
+spBoard = lpBoard . slLeg . head
+
+spOff :: SegmentPeriod -> Port
+spOff = lpOff . slLeg . last
+
 spPeriod :: SegmentPeriod -> Period
 spPeriod = lpPeriod . slLeg . head
 
-updatePeriod :: Period -> SegmentPeriod -> SegmentPeriod
-updatePeriod p = map u1
+alterPeriod :: Period -> SegmentPeriod -> SegmentPeriod
+alterPeriod p = map u1
   where u1 sl = sl { slLeg = u2 (slLeg sl) }
         u2 lp = lp { lpPeriod = p }
 
@@ -211,6 +224,12 @@ spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail
 data SegmentDate = MkSegmentDate { sdSegment :: SegmentPeriod
                                  , sdDepartureDate :: Day
                                  } deriving (Show)
+
+sdBoard :: SegmentDate -> Port
+sdBoard = spBoard . sdSegment
+
+sdOff :: SegmentDate -> Port
+sdOff = spOff . sdSegment
 
 sdDepartureTime :: SegmentDate -> ScheduleTime
 sdDepartureTime = spDepartureTime . sdSegment
