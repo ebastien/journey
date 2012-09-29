@@ -18,22 +18,20 @@ import Journey.Parsers (toDate)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency)
 import Journey.Connection (fromSegments, toOnDs)
-import Journey.Builder (buildAll)
+import Journey.Builder (buildAll, buildPathDate, buildPathPeriod)
 
 main :: IO ()
 main = do
   [refsFile, mctFile, ssimFile, beginDate, endDate] <- getArgs
   refs <- loadReferences refsFile
   mctdb <- fromList attributes <$> readMCTFile mctFile
-  
-  putStrLn "Done"
-  
-  {-
   segdb <- fromSegments . assocToCities refs . ssimSegments <$> readSsimFile ssimFile
 
   let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
       dateL = fromJust . toDate $ pack beginDate
       dateH = fromJust . toDate $ pack endDate
 
-  T.putStr . toLazyText $ foldMap (buildAll segdb covs) [dateL..dateH]
-  -}
+--  let builder d = buildAll covs $ buildPathDate segdb d
+--  T.putStr . toLazyText $ foldMap builder [dateL..dateH]
+
+  T.putStr . toLazyText . buildAll covs $ buildPathPeriod segdb

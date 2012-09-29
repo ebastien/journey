@@ -2,7 +2,9 @@
 
 module Journey.Builder (
     buildAll
-    ) where
+  , buildPathDate
+  , buildPathPeriod
+  ) where
 
 import Data.List (sort, group, intersperse)
 import Data.Monoid (mconcat, mempty)
@@ -16,32 +18,37 @@ import Journey.Types
 import Journey.Route
 import Journey.Connection
 
+type PathBuilder = Path -> (Builder -> Builder) -> Builder
+
+buildPathDate :: OnDSegments -> Day -> PathBuilder
+buildPathDate s d p b = foldMap (b . buildCnxDate) $ connectionsDate s d p
+
+buildPathPeriod :: OnDSegments -> PathBuilder
+buildPathPeriod s p b = foldMap (b . buildCnxPeriod) $ connectionsPeriod s p
+
 -- | Build a representation of all itineraries departing on a given day.
-buildAll :: (MetricSpace e) => OnDSegments
-                            -> [PortCoverages e]
-                            -> Day
+buildAll :: (MetricSpace e) => [PortCoverages e]
+                            -> PathBuilder
                             -> Builder
-buildAll segs covs date = foldMap (buildForOnD segs covs date) onds
+buildAll covs bld = foldMap (buildForOnD covs bld) onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Build a representation of itineraties for a single OnD.
-buildForOnD :: (MetricSpace e) => OnDSegments
-                               -> [PortCoverages e]
-                               -> Day
+buildForOnD :: (MetricSpace e) => [PortCoverages e]
+                               -> PathBuilder
                                -> OnD
                                -> Builder
-buildForOnD segs covs date ond = foldMap f covs
+buildForOnD covs bld ond = foldMap f covs
   where f cov = case ondPaths ond cov of
-                  Just paths -> foldMap (buildForPath date segs ond) paths
+                  Just paths -> foldMap (buildForPath ond bld) paths
                   Nothing    -> mempty
 
 -- | Build a representation of itineraties for a single path.
-buildForPath :: Day -> OnDSegments -> OnD -> Path -> Builder
-buildForPath date segs ond path = foldMap f $ connections segs date path
-  where f c = mconcat [ buildOnD ond   , singleton '\t'
-                      , buildPath path , singleton '\t'
-                      , buildCnx c
-                      , singleton '\n']
+buildForPath :: OnD -> PathBuilder -> Path -> Builder
+buildForPath ond bld path = bld path fmt
+  where fmt b = mconcat [ buildOnD ond   , singleton '\t'
+                        , buildPath path , singleton '\t'
+                        , b              , singleton '\n' ]
 
 -- | Build a representation of an OnD.
 buildOnD :: OnD -> Builder
@@ -56,24 +63,50 @@ buildPort :: Port -> Builder
 buildPort = fromString . show
 
 -- | Build a representation of a connection.
-buildCnx :: [SegmentDate] -> Builder
-buildCnx = mconcat . intersperse (singleton ';') . map buildSeg
+buildCnxDate :: [SegmentDate] -> Builder
+buildCnxDate = buildCnx buildSegmentDate
+
+buildCnxPeriod :: [SegmentPeriod] -> Builder
+buildCnxPeriod = buildCnx buildSegmentPeriod
+
+buildCnx :: (a -> Builder) -> [a] -> Builder
+buildCnx b = mconcat . intersperse (singleton ';') . map b
 
 -- | Build a representation of a segment.
-buildSeg :: SegmentDate -> Builder
-buildSeg s = mconcat . intersperse (singleton ' ')
-           $ [ buildFlight . lpFlight . slLeg . head $ sdSegment s
-             , buildPort $ sdBoard s
-             , buildPort $ sdOff s
-             , buildDate $ sdDepartureDate s
-             , buildTime $ sdDepartureTime s
-             , buildDate $ sdArrivalDate s
-             , buildTime $ sdArrivalTime s
-             ]
+buildSegmentDate :: SegmentDate -> Builder
+buildSegmentDate s = mconcat . intersperse (singleton ' ')
+                   $ [ buildFlight . lpFlight . slLeg . head $ sdSegment s
+                     , buildPort $ sdBoard s
+                     , buildPort $ sdOff s
+                     , buildDate $ sdDepartureDate s
+                     , buildTime $ sdDepartureTime s
+                     , buildDate $ sdArrivalDate s
+                     , buildTime $ sdArrivalTime s
+                     ]
+
+buildSegmentPeriod :: SegmentPeriod -> Builder
+buildSegmentPeriod s = mconcat . intersperse (singleton ' ')
+                     $ [ buildFlight . lpFlight . slLeg $ head s
+                       , buildPort $ spBoard s
+                       , buildPort $ spOff s
+                       , buildPeriod $ spPeriod s
+                       , buildTime $ spDepartureTime s
+                       , buildTime $ spArrivalTime s
+                       , buildDateVariation $ spArrivalDateVariation s
+                       ]
 
 -- | Build a representation of a flight.
 buildFlight :: Flight -> Builder
 buildFlight f = build "{} {}" (Shown $ fAirline f, left 5 ' ' $ fNumber f)
+
+buildPeriod :: Period -> Builder
+buildPeriod (b,e,w) = build "{}-{}/{}" (buildDate b, buildDate e, buildDow w)
+
+buildDow :: Dow -> Builder
+buildDow = fromString . show
+
+buildDateVariation :: Int -> Builder
+buildDateVariation = left 2 ' '
 
 -- | Build a representation of a date.
 buildDate :: Day -> Builder
