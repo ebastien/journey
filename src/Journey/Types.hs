@@ -12,7 +12,8 @@ module Journey.Types (
     , everyDow
     , Period
     , maxPeriod
-    , intersect
+    , shiftPeriod
+    , intersectPeriods
     , withinPeriod
     , TimeDuration
     , TimeVariation
@@ -117,6 +118,10 @@ instance Bounded Day where
   minBound = fromGregorian 1900 1 1
   maxBound = fromGregorian 9999 1 1
 
+shiftDate :: Int -> Day -> Day
+shiftDate n d = let d' = addDays (fromIntegral n) d
+                in min maxBound $ max minBound d'
+
 type Period = (Day, Day, Dow)
 
 -- | Test if a day is within a period.
@@ -129,17 +134,23 @@ withinPeriod (l,h,o) d = low && high && dow
 maxPeriod :: Period
 maxPeriod = (minBound, maxBound, everyDow)
 
-rotateDow_ :: Word8 -> Int -> Word8
-rotateDow_ d n | n >= 0 = shift d n' .|. shift d (n' - 7)
-  where n' = n `mod` 7
+rotateDow_ :: Int -> Word8 -> Word8
+rotateDow_ n d = shift d nL .|. shift d nR
+  where nL = n `mod` 7
+        nR = negate $ (7 - n) `mod` 7
 
-intersect :: Period -> Period -> Int -> Maybe Period
-intersect (d1, e1, MkDow w1) (d2, e2, MkDow w2) offset =
+shiftPeriod :: Int -> Period -> Period
+shiftPeriod n (d, e, MkDow w) = (d', e', MkDow w')
+  where d' = shiftDate n d
+        e' = shiftDate n e
+        w' = rotateDow_ n w
+
+intersectPeriods :: Period -> Period -> Maybe Period
+intersectPeriods (d1, e1, MkDow w1) (d2, e2, MkDow w2) =
   if d <= e && w /= 0; then Just (d, e, MkDow w); else Nothing
-  where d = max (addDays n d1) $ d2 
-        e = min (addDays n e1) $ e2
-        w = w1 .&. (rotateDow_ w2 offset)
-        n = fromIntegral offset
+  where d = max d1 d2
+        e = min e1 e2
+        w = w1 .&. w2
 
 {-------------------------------------------------------------------------------
   Date and time
@@ -209,7 +220,8 @@ spArrivalTime :: SegmentPeriod -> ScheduleTime
 spArrivalTime = lpArrivalTime . slLeg . last
 
 spArrivalDateVariation :: SegmentPeriod -> Int
-spArrivalDateVariation = lpArrivalDateVariation . slLeg . last
+spArrivalDateVariation s = lpArrivalDateVariation ( slLeg $ last s )
+                         - lpArrivalDateVariation ( slLeg $ head s )
 
 spElapsedTime :: SegmentPeriod -> TimeDuration
 spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail legs)
