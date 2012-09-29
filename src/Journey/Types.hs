@@ -221,7 +221,7 @@ spArrivalTime = lpArrivalTime . slLeg . last
 
 spArrivalDateVariation :: SegmentPeriod -> Int
 spArrivalDateVariation s = lpArrivalDateVariation ( slLeg $ last s )
-                         - lpArrivalDateVariation ( slLeg $ head s )
+                         - lpDepartureDateVariation ( slLeg $ head s )
 
 spElapsedTime :: SegmentPeriod -> TimeDuration
 spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail legs)
