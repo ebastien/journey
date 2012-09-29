@@ -95,8 +95,9 @@ connectionsPeriod onds = map extract . foldl combine acc0 . toSteps
                                      timeleft' = timeleft - elapsed
                                      e = (o, d')
                                  in return $ (done . (e:), (Just o, timeleft', d'))
-        extract (dlist, (Just s', _, d')) = map (restrict d') $ dlist []
-        restrict d' (s, d) = let p = shiftPeriod (d - d') (spPeriod s)
+        extract (dlist, (Just s', _, d')) = let p' = spPeriod s'
+                                            in map (restrict p' d') $ dlist []
+        restrict p' d' (s, d) = let p = shiftPeriod (d - d') p'
                                 in alterPeriod p s
 
 -- | Try to connect an onward segment.
