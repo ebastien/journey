@@ -10,7 +10,7 @@ import Data.Monoid (mconcat, First(..), getFirst)
 import Data.List (find)
 import Data.Maybe (fromMaybe)
 import Data.Foldable (foldMap)
-import Control.Monad (mzero)
+import Control.Monad (mzero, guard)
 import Data.Time.Calendar (Day, addDays, diffDays)
 import Data.Time.Clock (secondsToDiffTime)
 
@@ -45,6 +45,14 @@ toSteps path = zip path $ tail path
 mct :: SegmentPeriod -> SegmentPeriod -> TimeDuration
 mct _ _ = secondsToDiffTime 30*60
 
+notSameFlight :: Maybe SegmentPeriod -> SegmentPeriod -> Bool
+notSameFlight i o = case i of
+  Nothing -> True
+  Just s  -> spFlight s /= spFlight o
+
+isTrafficAllowed :: Maybe SegmentPeriod -> SegmentPeriod -> Bool
+isTrafficAllowed i o = notSameFlight i o
+
 -- | Feasible connections on a given day.
 connectionsDate :: OnDSegments -> Day -> Path -> [[SegmentDate]]
 connectionsDate onds d0 = map (($[]) . fst) . foldl combine s0 . toSteps
@@ -52,6 +60,7 @@ connectionsDate onds d0 = map (($[]) . fst) . foldl combine s0 . toSteps
         combine acc (a, b) = do
             (done, (incoming, timeleft)) <- acc
             outgoing <- M.find (MkPOnD a b) onds
+            guard $ isTrafficAllowed incoming outgoing
             let (d, t, cmin, cmax, count) = case incoming of
                   Nothing -> ( d0
                              , secondsToDiffTime 0
@@ -68,37 +77,6 @@ connectionsDate onds d0 = map (($[]) . fst) . foldl combine s0 . toSteps
               Just (o, w) -> let elapsed = count (spElapsedTime outgoing) w
                                  timeleft' = timeleft - elapsed
                              in return $ (done . (o:), (Just o, timeleft'))
-
--- | Feasible connections on periods.
-connectionsPeriod :: OnDSegments -> Path -> [[SegmentPeriod]]
-connectionsPeriod onds = map extract . foldl combine acc0 . toSteps
-  where acc0 = [(id, (Nothing, secondsToDiffTime 24*60*60, 0))]
-        combine acc (a, b) = do
-            (done, (incoming, timeleft, dvar)) <- acc
-            outgoing <- M.find (MkPOnD a b) onds
-            let (p, t, d, cmin, cmax, count) = case incoming of
-                  Nothing -> ( maxPeriod
-                             , secondsToDiffTime 0
-                             , 0
-                             , secondsToDiffTime 0
-                             , timeleft
-                             , const )
-                  Just i  -> ( spPeriod i
-                             , spArrivalTime i
-                             , spArrivalDateVariation i
-                             , mct i outgoing
-                             , min timeleft $ secondsToDiffTime 6*60*60
-                             , (+) )
-            case connectPeriod p t d cmin cmax outgoing of
-              Nothing         -> mzero
-              Just (o, w, d') -> let elapsed = count (spElapsedTime outgoing) w
-                                     timeleft' = timeleft - elapsed
-                                     e = (o, d')
-                                 in return $ (done . (e:), (Just o, timeleft', d'))
-        extract (dlist, (Just s', _, d')) = let p' = spPeriod s'
-                                            in map (restrict p' d') $ dlist []
-        restrict p' d' (s, d) = let p = shiftPeriod (d - d') p'
-                                in alterPeriod p s
 
 -- | Try to connect an onward segment.
 connectDate :: Day
@@ -119,6 +97,38 @@ connectDate d0 t0 cmin cmax seg = case find (match . fst) $ zip dates waits of
         wait d = t - t0 + secondsToDiffTime (diffDays d d0 * 86400)
         t = lpDepartureTime firstLeg
         mkSeg = MkSegmentDate seg
+
+-- | Feasible connections on periods.
+connectionsPeriod :: OnDSegments -> Path -> [[SegmentPeriod]]
+connectionsPeriod onds = map extract . foldl combine acc0 . toSteps
+  where acc0 = [(id, Nothing, secondsToDiffTime 24*60*60, 0)]
+        combine acc (a, b) = do
+            (done, incoming, timeleft, dvar) <- acc
+            outgoing <- M.find (MkPOnD a b) onds
+            guard $ isTrafficAllowed incoming outgoing
+            let (p, t, d, cmin, cmax, count) = case incoming of
+                  Nothing -> ( maxPeriod
+                             , secondsToDiffTime 0
+                             , 0
+                             , secondsToDiffTime 0
+                             , timeleft
+                             , const )
+                  Just i  -> ( spPeriod i
+                             , spArrivalTime i
+                             , spArrivalDateVariation i
+                             , mct i outgoing
+                             , min timeleft $ secondsToDiffTime 6*60*60
+                             , (+) )
+            case connectPeriod p t d cmin cmax outgoing of
+              Nothing         -> mzero
+              Just (o, w, d') -> let elapsed = count (spElapsedTime outgoing) w
+                                     timeleft' = timeleft - elapsed
+                                     e = (o, d')
+                                 in return $ (done . (e:), Just o, timeleft', d')
+        extract (dlist, Just s', _, d') = let p' = spPeriod s'
+                                          in map (restrict p' d') $ dlist []
+        restrict p' d' (s, d) = let p = shiftPeriod (d - d') p'
+                                in alterPeriod p s
 
 -- | Try to connect an onward segment.
 connectPeriod :: Period

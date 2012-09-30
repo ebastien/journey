@@ -22,6 +22,7 @@ module Journey.Types (
     , LegPeriod(..)
     , SegmentLeg(..)
     , SegmentPeriod
+    , spFlight
     , spPeriod
     , alterPeriod
     , spBoard, spOff
@@ -198,6 +199,9 @@ data SegmentLeg = MkSegmentLeg { slLeg :: LegPeriod
 
 -- | A segment as a sequence of legs periods.
 type SegmentPeriod = [SegmentLeg]
+
+spFlight :: SegmentPeriod -> Flight
+spFlight = lpFlight . slLeg . head
 
 spBoard :: SegmentPeriod -> Port
 spBoard = lpBoard . slLeg . head
