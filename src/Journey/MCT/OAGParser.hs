@@ -2,13 +2,6 @@
 
 module Journey.MCT.OAGParser (
     readMCTFile
-  , toCountry
-  , toRegion
-  , toState
-  , toTransitFlow
-  , toTerminal
-  , toAircraftBody
-  , toAircraftType
   , toRule
   ) where
 
@@ -30,6 +23,13 @@ import Journey.MCT.Rule
 
 type AircraftClass = Either AircraftBody AircraftType
 
+peekEndOfLine :: Parser ()
+peekEndOfLine = P.endOfInput <|> do
+  c <- P.peekChar
+  case c of
+    Just '\n' -> pure ()
+    _         -> fail "No end of line"
+
 spaceP :: Int -> Parser ()
 spaceP n = void (P.string $ B8.replicate n ' ')
        <|> peekEndOfLine <?> "Space padding"
@@ -40,55 +40,12 @@ defaultP n a = spaceP n *> pure a
 option :: Int -> Parser a -> Parser (Option a)
 option n p = Known <$> p <|> defaultP n Unknown
 
-peekEndOfLine :: Parser ()
-peekEndOfLine = P.endOfInput <|> do
-  c <- P.peekChar
-  case c of
-    Just '\n' -> pure ()
-    _         -> fail "No end of line"
-
 alphaNumPackBounded :: Int -> Int -> Parser Int
 alphaNumPackBounded l h = packBoundedWith l h peekEndOfLine (alphaNumPack l)
 
-countryP :: Parser Country
-countryP = MkCountry <$> packWith 2 alphaPack
-
--- | Try to convert a ByteString to a Country.
-toCountry :: B8.ByteString -> Maybe Country
-toCountry = maybeParse countryP
-
-regionP :: Parser Region
-regionP = MkRegion <$> packWith 3 alphaPack
-
--- | Try to convert a ByteString to a Region.
-toRegion :: B8.ByteString -> Maybe Region
-toRegion = maybeParse regionP
-
-stateP :: Parser State
-stateP = MkState <$> packWith 2 alphaPack
-
--- | Try to convert a ByteString to a State.
-toState :: B8.ByteString -> Maybe State
-toState = maybeParse stateP
-
-transitAreaP :: Parser TransitArea
-transitAreaP = P.char 'D' *> pure Domestic
-           <|> P.char 'I' *> pure International
-
-transitFlowP :: Parser TransitFlow
-transitFlowP = MkTransitFlow <$> transitAreaP <*> transitAreaP
-
--- | Try to convert a ByteString to a TransitFlow.
-toTransitFlow :: B8.ByteString -> Maybe TransitFlow
-toTransitFlow = maybeParse transitFlowP
-
-terminalP :: Parser Terminal
-terminalP = MkTerminal <$> alphaNumPackBounded 1 2
-        <?> "Terminal"
-
--- | Try to convert a ByteString to a Terminal.
-toTerminal :: B8.ByteString -> Maybe Terminal
-toTerminal = maybeParse terminalP
+mctTerminalP :: Parser Terminal
+mctTerminalP = MkTerminal <$> alphaNumPackBounded 1 2
+          <?> "Terminal"
 
 aircraftBodyP :: Parser AircraftBody
 aircraftBodyP = P.char 'N' *> defaultP 2 Narrow
@@ -98,14 +55,6 @@ aircraftBodyP = P.char 'N' *> defaultP 2 Narrow
 -- | Try to convert a ByteString to a AircraftBody.
 toAircraftBody :: B8.ByteString -> Maybe AircraftBody
 toAircraftBody = maybeParse aircraftBodyP
-
-aircraftTypeP :: Parser AircraftType
-aircraftTypeP = MkAircraftType <$> packWith 3 (alphaNumPack 3)
-            <?> "Aircraft type"
-
--- | Try to convert a ByteString to a AircraftType.
-toAircraftType :: B8.ByteString -> Maybe AircraftType
-toAircraftType = maybeParse aircraftTypeP
 
 -- | Parser for MCT carrier codes.
 carrierP :: Parser AirlineCode
@@ -156,8 +105,8 @@ ruleP = do
   depCarrier <- option 3 carrierP         <?> "Rule departure carrier"
   arrAircraft <- option 3 aircraftClassP  <?> "Rule arrival aircraft"
   depAircraft <- option 3 aircraftClassP  <?> "Rule departure aircraft"
-  arrTerminal <- option 2 terminalP       <?> "Rule arrival terminal"
-  depTerminal <- option 2 terminalP       <?> "Rule departure terminal"
+  arrTerminal <- option 2 mctTerminalP    <?> "Rule arrival terminal"
+  depTerminal <- option 2 mctTerminalP    <?> "Rule departure terminal"
   prevCountry <- option 2 countryP        <?> "Rule previous country"
   prevCity <- option 3 portP              <?> "Rule previous city"
   prevPort <- option 3 portP              <?> "Rule previous airport"

@@ -2,7 +2,7 @@
 
 module Journey.Ssim (
       readSsimFile
-    , ssimSegments
+    , ssimRegularSegments
     ) where
 
 import qualified Data.ByteString.Char8 as B8
@@ -12,7 +12,7 @@ import Data.Attoparsec.ByteString (Parser, (<?>))
 import qualified Data.Attoparsec.ByteString.Char8 as P
 import qualified Data.Attoparsec.ByteString.Lazy as LP
 import Data.Functor ((<$>))
-import Control.Monad (void, join)
+import Control.Monad (void, join, guard)
 import Control.Applicative (pure, some, (<*>), (<*), (*>), (<|>))
 import Data.List (groupBy, elemIndex)
 import Data.Function (on)
@@ -72,6 +72,10 @@ carrierP = do
   void $ some P.endOfLine
   return (Carrier airline)
 
+optTerminalP :: Parser (Maybe Terminal)
+optTerminalP = P.string "  " *> pure Nothing 
+           <|> Just <$> terminalP
+
 -- | Parser for leg records.
 legPeriodP :: Parser LegPeriod
 legPeriodP = do
@@ -81,23 +85,29 @@ legPeriodP = do
   fnum <- fnumP             <?> "Leg flight number"
   iviL <- decimalP 2        <?> "Leg variation (low)"
   lsn <- decimalP 2         <?> "Leg sequence number"
-  void $ P.anyChar
+  srv <- serviceTypeP       <?> "Leg service type"
   bdate <- dateP            <?> "Leg period of operation (begin)"
   edate <- periodBoundaryP  <?> "Leg period of operation (end)"
   dow <- dowP               <?> "Leg days of week"
-  void $ P.anyChar
+  freq <- frequencyRateP    <?> "Leg frequency rate"
   bpoint <- portP           <?> "Leg board point"
   void $ P.take 4
   dtime <- scheduleTimeP    <?> "Leg departure time"
   dtvar <- timeVariationP   <?> "Leg departure time variation"
-  void $ P.take 2
+  dterm <- optTerminalP     <?> "Leg departure terminal"
   opoint <- portP           <?> "Leg off point"
   atime <- scheduleTimeP    <?> "Leg arrival time"
   void $ P.take 4
   atvar <- timeVariationP   <?> "Leg arrival time variation"
-  void $ P.take (2+3+20+5+10+9+2+6)
+  aterm <- optTerminalP     <?> "Leg departure terminal"
+  aircraft <- aircraftTypeP <?> "Leg aircraft type"
+  void $ P.take (20+5+10+9)
+  transit <- transitFlowP   <?> "leg MCT status"
+  void $ P.take 6
   iviH <- decimalP 1 <|> (P.char ' ' *> pure 0) <?> "Leg variation (high)"
-  void $ P.take (3+3+3+9+1+1+1+11+1+11+20)
+  void $ P.take (3+3+3+9+1+1+1)
+  traffic <- legRestrictionsP <?> "Leg traffic restriction"
+  void $ P.take (11+20)
   ddvar <- dateVariationP   <?> "Leg departure date variation"
   advar <- dateVariationP   <?> "Leg arrival date variation"
   void $ P.take 6
@@ -110,6 +120,8 @@ legPeriodP = do
   return $ LegPeriod flight period lsn
                      bpoint opoint
                      dtime atime etime ddvar advar
+                     srv freq dterm aterm
+                     aircraft transit traffic
 
 -- | Parser for segment records.
 segmentP :: Parser SegmentData
@@ -185,8 +197,18 @@ flightSegments = join . combine
                                 idx = segmentIdx (lpSequence legL) (lpSequence legY)
 
 -- | Extract segments from a SSIM structure.
-ssimSegments :: Ssim -> [(OnD, SegmentPeriod)]
-ssimSegments ssim = do
+ssimRegularSegments :: Ssim -> [(OnD, SegmentPeriod)]
+ssimRegularSegments ssim = do
   car <- ssimCarriers ssim
   flt <- cgFlights car
-  flightSegments flt
+  seg <- flightSegments flt
+  guard $ isRegularSegment $ snd seg
+  return seg
+
+isRegularLeg :: SegmentLeg -> Bool
+isRegularLeg sl = (lpService lp) == ServicePax
+               && (lpFrequency lp) == 1
+  where lp = slLeg sl
+
+isRegularSegment :: SegmentPeriod -> Bool
+isRegularSegment = all isRegularLeg

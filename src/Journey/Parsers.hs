@@ -18,6 +18,15 @@ module Journey.Parsers (
     , alphaPack
     , alphaNumPack
     , maybeParse
+    , serviceTypeP
+    , frequencyRateP
+    , terminalP
+    , stateP
+    , regionP
+    , countryP
+    , aircraftTypeP
+    , transitFlowP
+    , legRestrictionsP
     ) where
 
 import qualified Data.ByteString.Char8 as B8
@@ -92,14 +101,7 @@ maybeParse p = either (const Nothing) Just . P.parseOnly p
 
 -- | Parser for airline codes.
 airlineP :: Parser AirlineCode
-airlineP = MkAirlineCode <$> packWith 3 step <?> "Airline code"
-  where step n = (* 37^n) <$> code n
-        code n | n < 2     = letter <|> digit
-               | otherwise = letter <|> digit <|> space
-        letter = (+11) . subtract (ord 'A') . ord <$> P.satisfy isUpperLetter
-        digit  =  (+1) . subtract (ord '0') . ord <$> P.digit
-        space  = pure 0 <* P.char ' '
-        isUpperLetter c = c >= 'A' && c <= 'Z'
+airlineP = MkAirlineCode <$> packWith 3 (alphaNumPack 2) <?> "Airline code"
 
 -- | Try to convert a ByteString to an AirlineCode.
 toAirlineCode :: B8.ByteString -> Maybe AirlineCode
@@ -193,3 +195,67 @@ fnumP = paddedDecimalP 4 <?> "Flight number"
 -- | Parser for board and off points indicators.
 pointsIndicatorP :: Parser Int
 pointsIndicatorP = packWith 2 alphaPack <?> "Board and off points indicator"
+
+-- | Parser for service types.
+serviceTypeP :: Parser ServiceType
+serviceTypeP = P.satisfy (P.inClass "JSUQGBR") *> pure ServicePax
+           <|> P.satisfy (P.inClass "FVMA") *> pure ServiceCargo
+           <|> P.anyChar *> pure ServiceOther
+
+-- | Parser for frequency rates.
+frequencyRateP :: Parser FrequencyRate
+frequencyRateP = P.char ' ' *> pure 1
+             <|> P.char '2' *> pure 2
+
+-- | Parser for terminals.
+terminalP :: Parser Terminal
+terminalP = MkTerminal <$> packWith 2 (alphaNumPack 1) <?> "Terminal"
+
+-- | Parser for IATA countries.
+countryP :: Parser Country
+countryP = MkCountry <$> packWith 2 alphaPack <?> "Country"
+
+-- | Try to convert a ByteString to a Country.
+toCountry :: B8.ByteString -> Maybe Country
+toCountry = maybeParse countryP
+
+-- | Parser for IATA regions.
+regionP :: Parser Region
+regionP = MkRegion <$> packWith 3 alphaPack <?> "Region"
+
+-- | Try to convert a ByteString to a Region.
+toRegion :: B8.ByteString -> Maybe Region
+toRegion = maybeParse regionP
+
+-- | Parser for IATA states.
+stateP :: Parser State
+stateP = MkState <$> packWith 2 alphaPack <?> "State"
+
+-- | Try to convert a ByteString to a State.
+toState :: B8.ByteString -> Maybe State
+toState = maybeParse stateP
+
+aircraftTypeP :: Parser AircraftType
+aircraftTypeP = MkAircraftType <$> packWith 3 (alphaNumPack 3)
+            <?> "Aircraft type"
+
+-- | Try to convert a ByteString to a AircraftType.
+toAircraftType :: B8.ByteString -> Maybe AircraftType
+toAircraftType = maybeParse aircraftTypeP
+
+transitAreaP :: Parser TransitArea
+transitAreaP = P.char 'D' *> pure Domestic
+           <|> P.char 'I' *> pure International
+
+transitFlowP :: Parser TransitFlow
+transitFlowP = MkTransitFlow <$> transitAreaP <*> transitAreaP
+
+-- | Try to convert a ByteString to a TransitFlow.
+toTransitFlow :: B8.ByteString -> Maybe TransitFlow
+toTransitFlow = maybeParse transitFlowP
+
+restrictionP :: Parser Restriction
+restrictionP = P.char ' ' *> pure NoRestriction
+
+legRestrictionsP :: Parser LegRestrictions
+legRestrictionsP = P.count 12 $ restrictionP

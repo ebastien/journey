@@ -9,7 +9,7 @@ import qualified Data.Text.Lazy.IO as T
 import Data.Text.Lazy.Builder (toLazyText)
 import System.Environment (getArgs)
 
-import Journey.Ssim (readSsimFile, ssimSegments)
+import Journey.Ssim (readSsimFile, ssimRegularSegments)
 import Journey.MCT.OAGParser (readMCTFile)
 import Journey.MCT.Attributes (attributes)
 import Journey.MCT.Tree (fromList)
@@ -23,7 +23,8 @@ main = do
   [refsFile, mctFile, ssimFile] <- getArgs
   refs <- loadReferences refsFile
   mctdb <- fromList attributes <$> readMCTFile mctFile
-  segdb <- fromSegments . assocToCities refs . ssimSegments <$> readSsimFile ssimFile
+  segdb <- fromSegments . assocToCities refs . ssimRegularSegments
+       <$> readSsimFile ssimFile
 
   let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
 

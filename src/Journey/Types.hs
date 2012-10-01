@@ -18,6 +18,10 @@ module Journey.Types (
     , TimeDuration
     , TimeVariation
     , ScheduleTime
+    , FrequencyRate
+    , ServiceType(..)
+    , Restriction(..)
+    , LegRestrictions
     , Flight(..)
     , LegPeriod(..)
     , SegmentLeg(..)
@@ -160,10 +164,32 @@ intersectPeriods (d1, e1, MkDow w1) (d2, e2, MkDow w2) =
 type TimeDuration = DiffTime
 type TimeVariation = DiffTime
 type ScheduleTime = DiffTime
+type FrequencyRate = Int
 
 {-------------------------------------------------------------------------------
   Schedule
 -------------------------------------------------------------------------------}
+
+data ServiceType = ServicePax | ServiceCargo | ServiceOther
+                   deriving (Show, Eq)
+
+data Restriction = NoRestriction
+                 | NoTraffic
+                 | NoConnection
+                 | NoInternational
+                 | QualIntlOnlineStop
+                 | QualOnlineStop
+                 | NoInterline
+                 | OnlineConnection
+                 | NoDisplay
+                 | TechnicalLanding
+                 | ConnectionOnly
+                 | IntlOnlineStopOnly
+                 | IntlConnectionOnly
+                 | IntlOnlineCnxOnly
+                 deriving (Show, Eq)
+
+type LegRestrictions = [Restriction]
 
 -- | A flight period designator.
 data Flight = Flight { fAirline :: !AirlineCode
@@ -173,7 +199,7 @@ data Flight = Flight { fAirline :: !AirlineCode
                      } deriving (Show, Eq)
 
 -- | A leg period.
-data LegPeriod = LegPeriod { lpFlight :: Flight
+data LegPeriod = LegPeriod { lpFlight :: !Flight
                            , lpPeriod :: !Period
                            , lpSequence :: !Int
                            , lpBoard :: !Port
@@ -183,6 +209,13 @@ data LegPeriod = LegPeriod { lpFlight :: Flight
                            , lpElapsedTime :: !TimeDuration
                            , lpDepartureDateVariation :: !Int
                            , lpArrivalDateVariation :: !Int
+                           , lpService :: !ServiceType
+                           , lpFrequency :: !FrequencyRate
+                           , lpDepartureTerminal :: !(Maybe Terminal)
+                           , lpArrivalTerminal :: !(Maybe Terminal)
+                           , lpAircraftType :: !AircraftType
+                           , lpTransitFlow :: !TransitFlow
+                           , lpRestrictions :: !LegRestrictions
                            } deriving Show
 
 -- | Segment data element.
