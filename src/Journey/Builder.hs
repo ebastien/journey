@@ -2,7 +2,6 @@
 
 module Journey.Builder (
     buildAll
-  , buildPathDate
   , buildPathPeriod
   ) where
 
@@ -19,9 +18,6 @@ import Journey.Route
 import Journey.Connection
 
 type PathBuilder = Path -> (Builder -> Builder) -> Builder
-
-buildPathDate :: OnDSegments -> Day -> PathBuilder
-buildPathDate s d p b = foldMap (b . buildCnxDate) $ connectionsDate s d p
 
 buildPathPeriod :: OnDSegments -> PathBuilder
 buildPathPeriod s p b = foldMap (b . buildCnxPeriod) $ connectionsPeriod s p

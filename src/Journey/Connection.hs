@@ -1,7 +1,6 @@
 module Journey.Connection (
       fromSegments
     , toOnDs
-    , connectionsDate
     , connectionsPeriod
     , OnDSegments
     ) where
@@ -52,51 +51,6 @@ notSameFlight i o = case i of
 
 isTrafficAllowed :: Maybe SegmentPeriod -> SegmentPeriod -> Bool
 isTrafficAllowed i o = notSameFlight i o
-
--- | Feasible connections on a given day.
-connectionsDate :: OnDSegments -> Day -> Path -> [[SegmentDate]]
-connectionsDate onds d0 = map (($[]) . fst) . foldl combine s0 . toSteps
-  where s0 = [(id, (Nothing, secondsToDiffTime 24*60*60))]
-        combine acc (a, b) = do
-            (done, (incoming, timeleft)) <- acc
-            outgoing <- M.find (MkPOnD a b) onds
-            guard $ isTrafficAllowed incoming outgoing
-            let (d, t, cmin, cmax, count) = case incoming of
-                  Nothing -> ( d0
-                             , secondsToDiffTime 0
-                             , secondsToDiffTime 0
-                             , timeleft
-                             , const )
-                  Just i  -> ( sdArrivalDate i
-                             , sdArrivalTime i
-                             , mct (sdSegment i) outgoing
-                             , min timeleft $ secondsToDiffTime 6*60*60
-                             , (+) )
-            case connectDate d t cmin cmax outgoing of
-              Nothing     -> mzero
-              Just (o, w) -> let elapsed = count (spElapsedTime outgoing) w
-                                 timeleft' = timeleft - elapsed
-                             in return $ (done . (o:), (Just o, timeleft'))
-
--- | Try to connect an onward segment.
-connectDate :: Day
-            -> ScheduleTime
-            -> TimeDuration
-            -> TimeDuration
-            -> SegmentPeriod
-            -> Maybe (SegmentDate, TimeDuration)
-connectDate d0 t0 cmin cmax seg = case find (match . fst) $ zip dates waits of
-                                    Nothing     -> Nothing
-                                    Just (d, w) -> Just (mkSeg d, w)
-  where legs = map slLeg seg
-        firstLeg = head legs
-        lastLeg = last legs
-        match = withinPeriod (lpPeriod firstLeg)
-        dates = [d0..]
-        waits = takeWhile (<cmax) . dropWhile (<cmin) $ map wait dates
-        wait d = t - t0 + secondsToDiffTime (diffDays d d0 * 86400)
-        t = lpDepartureTime firstLeg
-        mkSeg = MkSegmentDate seg
 
 -- | Feasible connections on periods.
 connectionsPeriod :: OnDSegments -> Path -> [[SegmentPeriod]]
