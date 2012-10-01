@@ -136,7 +136,7 @@ segmentP = do
   void $ P.take 13
   iviH <- decimalP 1 <|> (P.char ' ' *> pure 0) <?> "Segment variation (high)"
   idx <- pointsIndicatorP   <?> "Segment points indicator"
-  dei <- decimalP 3         <?> "Segment DEI"
+  _dei <- decimalP 3        <?> "Segment DEI"
   bpoint <- portP           <?> "Segment board point"
   opoint <- portP           <?> "Segment off point"
   void $ P.take 155
@@ -144,7 +144,7 @@ segmentP = do
   void $ some P.endOfLine
   let variation = iviL + 100 * iviH
       flight = Flight airline fnum suffix variation
-  return $ SegmentData flight idx bpoint opoint dei
+  return $ SegmentData flight idx bpoint opoint UnknownDEI
 
 -- | Parser for trailer records.
 trailerP :: Parser ()
@@ -191,7 +191,7 @@ flightSegments = join . combine
                 mkAssoc y = ((lpBoard legX, lpOff legY), map mkLeg legs)
                   where legY = lgLeg y
                         legs = takeWhile (on (>=) (lpSequence . lgLeg) $ y) xs
-                        mkLeg l = MkSegmentLeg legL $ map dDEI . filter ((==) idx . dIndex) $ segL
+                        mkLeg l = MkSegmentLeg legL $ map dDEI . filter ((==idx) . dIndex) $ segL
                           where segL = lgSegments l
                                 legL = lgLeg l
                                 idx = segmentIdx (lpSequence legL) (lpSequence legY)

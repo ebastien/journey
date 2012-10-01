@@ -34,7 +34,7 @@ module Journey.Types (
     , SegmentDate(..)
     , sdBoard, sdOff
     , sdDepartureTime, sdArrivalDate, sdArrivalTime
-    , SegmentDEI
+    , SegmentDEI(..)
     , segmentIdx
     , City, Region(..), State(..), Country(..), TransitArea(..), TransitFlow(..)
     , Terminal(..), AircraftBody(..), AircraftType(..)
@@ -226,16 +226,33 @@ data LegPeriod = LegPeriod { lpFlight :: !Flight
                            } deriving Show
 
 -- | Segment data element.
-type SegmentDEI = Int
+data SegmentDEI = MkDEI17x !RestrictService
+                | MkDEI71x !RestrictQualifier
+                | UnknownDEI
+                deriving (Show)
+
+data RestrictService = RestrictPax !Restriction
+                     | RestrictCargoMail !Restriction
+                     | RestrictCargo !Restriction
+                     | RestrictMail !Restriction
+                     deriving (Show)
+
+data RestrictQualifier = RestrictBoard
+                       | RestrictOff
+                       | RestrictBoardOff
+                       deriving (Show)
 
 -- | Segment index from leg sequences.
 segmentIdx :: Int -> Int -> Int
 segmentIdx board off = off * 26 + board - 1
 
 -- | The projection of a leg to a specific segment.
-data SegmentLeg = MkSegmentLeg { slLeg :: LegPeriod
+data SegmentLeg = MkSegmentLeg { slLeg :: !LegPeriod
                                , slDEIs :: [SegmentDEI]
                                } deriving (Show)
+
+slRestriction :: SegmentLeg -> Restriction
+slRestriction = undefined
 
 -- | A segment as a sequence of legs periods.
 type SegmentPeriod = [SegmentLeg]
