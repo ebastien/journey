@@ -256,6 +256,26 @@ toTransitFlow = maybeParse transitFlowP
 
 restrictionP :: Parser Restriction
 restrictionP = P.char ' ' *> pure NoRestriction
+           <|> P.char 'A' *> pure NoTraffic
+           <|> P.char 'B' *> pure NoConnection
+           <|> P.char 'C' *> pure NoInternational
+           <|> P.char 'D' *> pure QIntlOnlineCnxStop
+           <|> P.char 'E' *> pure QOnlineCnxStop
+           <|> P.char 'F' *> pure NoInterline
+           <|> P.char 'G' *> pure QOnlineCnx
+           <|> P.char 'H' *> pure NoDisplay
+           <|> P.char 'I' *> pure TechnicalLanding
+           <|> P.char 'K' *> pure Connection
+           <|> P.char 'M' *> pure IntlOnlineStop
+           <|> P.char 'N' *> pure IntlConnection
+           <|> P.char 'O' *> pure IntlOnlineCnx
+           <|> P.char 'Q' *> pure IntlOnlineCnxStop
+           <|> P.char 'T' *> pure OnlineStop
+           <|> P.char 'V' *> pure ConnectionStop
+           <|> P.char 'W' *> pure IntlCnxStop
+           <|> P.char 'X' *> pure OnlineCnxStop
+           <|> P.char 'Y' *> pure OnlineCnx
+           <|> P.char 'Z' *> pure ExtRestriction
 
 legRestrictionsP :: Parser LegRestrictions
 legRestrictionsP = P.count 12 $ restrictionP

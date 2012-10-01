@@ -177,16 +177,23 @@ data Restriction = NoRestriction
                  | NoTraffic
                  | NoConnection
                  | NoInternational
-                 | QualIntlOnlineStop
-                 | QualOnlineStop
+                 | QIntlOnlineCnxStop
+                 | QOnlineCnxStop
                  | NoInterline
-                 | OnlineConnection
+                 | QOnlineCnx
                  | NoDisplay
                  | TechnicalLanding
-                 | ConnectionOnly
-                 | IntlOnlineStopOnly
-                 | IntlConnectionOnly
-                 | IntlOnlineCnxOnly
+                 | Connection
+                 | IntlOnlineStop
+                 | IntlConnection
+                 | IntlOnlineCnx
+                 | IntlOnlineCnxStop
+                 | OnlineStop
+                 | ConnectionStop
+                 | IntlCnxStop
+                 | OnlineCnxStop
+                 | OnlineCnx
+                 | ExtRestriction
                  deriving (Show, Eq)
 
 type LegRestrictions = [Restriction]
