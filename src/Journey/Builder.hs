@@ -14,6 +14,11 @@ import Data.Time.LocalTime (TimeOfDay(..), timeToTimeOfDay)
 import Data.Time.Calendar (Day, toGregorian)
 
 import Journey.Types
+import Journey.Period
+import Journey.Flight
+import Journey.SegmentDate
+import Journey.SegmentPeriod
+import Journey.LegPeriod
 import Journey.Route
 import Journey.Connection
 

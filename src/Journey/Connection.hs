@@ -15,6 +15,8 @@ import Data.Time.Clock (secondsToDiffTime)
 
 import qualified Journey.EnumMap as M
 import Journey.Types
+import Journey.Period
+import Journey.SegmentPeriod
 
 {-------------------------------------------------------------------------------
   Connection building

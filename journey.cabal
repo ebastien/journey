@@ -19,19 +19,6 @@ Library
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, IntervalMap
   Exposed-Modules:
-    Journey.Ssim,
-    Journey.Parsers,
-    Journey.Route,
-    Journey.GeoCoord,
-    Journey.Connection,
-    Journey.Builder
-    Journey.EnumMap,
-    Journey.Types,
-    Journey.MCT.DecisionTree,
-    Journey.MCT.Rule,
-    Journey.MCT.Tree,
-    Journey.MCT.Attributes,
-    Journey.MCT.OAGParser
 
 Executable itineraries
   Hs-source-dirs:   src
@@ -42,14 +29,20 @@ Executable itineraries
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, IntervalMap
   Other-Modules:
+    Journey.EnumMap,
+    Journey.Types,
+    Journey.Restriction,
+    Journey.Flight,
+    Journey.LegPeriod,
+    Journey.Period,
+    Journey.SegmentDate,
+    Journey.SegmentPeriod,
     Journey.Ssim,
     Journey.Parsers,
     Journey.Route,
     Journey.GeoCoord,
     Journey.Connection,
     Journey.Builder
-    Journey.EnumMap,
-    Journey.Types,
     Journey.MCT.DecisionTree,
     Journey.MCT.Rule,
     Journey.MCT.Tree,

@@ -24,6 +24,10 @@ import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.LocalTime (timeOfDayToTime, makeTimeOfDayValid)
 
 import Journey.Types
+import Journey.Flight
+import Journey.SegmentPeriod
+import Journey.LegPeriod
+import Journey.Restriction
 import Journey.Parsers
 
 {-------------------------------------------------------------------------------
@@ -35,13 +39,20 @@ data Header = Header deriving Show
 data Carrier = Carrier { cAirline :: !AirlineCode 
                        } deriving Show
 
+newtype SegmentIndex = MkSegmentIndex Int deriving (Show, Eq)
+
 -- | Segment data record.
 data SegmentData = SegmentData { dFlight :: Flight
-                               , dIndex :: !Int
+                               , dIndex :: !SegmentIndex
                                , dBoard :: !Port
                                , dOff :: !Port
                                , dDEI :: !SegmentDEI
                                } deriving Show
+
+-- | Segment index from leg sequences.
+segmentIndex :: LegSequence -> LegSequence -> SegmentIndex
+segmentIndex board off = MkSegmentIndex
+                       $ (getSequence off) * 26 + (getSequence board) - 1
 
 data LegGroup = LegGroup { lgLeg :: LegPeriod
                          , lgSegments :: [SegmentData] } deriving Show
@@ -84,7 +95,7 @@ legPeriodP = do
   airline <- airlineP
   fnum <- fnumP             <?> "Leg flight number"
   iviL <- decimalP 2        <?> "Leg variation (low)"
-  lsn <- decimalP 2         <?> "Leg sequence number"
+  lsn <- mkLegSequence <$> decimalP 2 <?> "Leg sequence number"
   srv <- serviceTypeP       <?> "Leg service type"
   bdate <- dateP            <?> "Leg period of operation (begin)"
   edate <- periodBoundaryP  <?> "Leg period of operation (end)"
@@ -123,6 +134,15 @@ legPeriodP = do
                      srv freq dterm aterm
                      aircraft transit traffic
 
+deiP :: Int -> Parser SegmentDEI
+deiP n = case n of
+  170 -> MkDEI17x . mkRestrictPax <$> restrictionP
+
+-- | Parser for board and off points indicators.
+segmentIndexP :: Parser SegmentIndex
+segmentIndexP = MkSegmentIndex <$> packWith 2 alphaPack
+            <?> "Board and off points indicator"
+
 -- | Parser for segment records.
 segmentP :: Parser SegmentData
 segmentP = do
@@ -135,7 +155,7 @@ segmentP = do
   void $ P.anyChar
   void $ P.take 13
   iviH <- decimalP 1 <|> (P.char ' ' *> pure 0) <?> "Segment variation (high)"
-  idx <- pointsIndicatorP   <?> "Segment points indicator"
+  idx <- segmentIndexP      <?> "Segment points indicator"
   _dei <- decimalP 3        <?> "Segment DEI"
   bpoint <- portP           <?> "Segment board point"
   opoint <- portP           <?> "Segment off point"
@@ -191,10 +211,12 @@ flightSegments = join . combine
                 mkAssoc y = ((lpBoard legX, lpOff legY), map mkLeg legs)
                   where legY = lgLeg y
                         legs = takeWhile (on (>=) (lpSequence . lgLeg) $ y) xs
-                        mkLeg l = MkSegmentLeg legL $ map dDEI . filter ((==idx) . dIndex) $ segL
+                        mkLeg l = MkSegmentLeg legL . map dDEI
+                                $ filter ((==idx) . dIndex) segL
                           where segL = lgSegments l
                                 legL = lgLeg l
-                                idx = segmentIdx (lpSequence legL) (lpSequence legY)
+                                idx = segmentIndex (lpSequence legL)
+                                                   (lpSequence legY)
 
 -- | Extract segments from a SSIM structure.
 ssimRegularSegments :: Ssim -> [(OnD, SegmentPeriod)]

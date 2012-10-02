@@ -12,6 +12,7 @@ import qualified Data.IntervalMap as PM
 
 import qualified Journey.EnumMap as EM
 import Journey.Types
+import Journey.Period
 import Journey.MCT.DecisionTree
 import Journey.MCT.Tree
 import Journey.MCT.Rule

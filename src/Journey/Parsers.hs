@@ -12,7 +12,6 @@ module Journey.Parsers (
     , dateVariationP
     , scheduleTimeP
     , fnumP
-    , pointsIndicatorP
     , packWith
     , packBoundedWith
     , alphaPack
@@ -26,6 +25,7 @@ module Journey.Parsers (
     , countryP
     , aircraftTypeP
     , transitFlowP
+    , restrictionP
     , legRestrictionsP
     ) where
 
@@ -48,6 +48,9 @@ import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.LocalTime (timeOfDayToTime, makeTimeOfDayValid)
 
 import Journey.Types
+import Journey.Period
+import Journey.LegPeriod
+import Journey.Restriction
 
 -- | Read a decimal number from a whole string.
 readAllDecimal :: Integral a => B8.ByteString -> Maybe a
@@ -192,10 +195,6 @@ scheduleTimeP = do
 fnumP :: Parser Int
 fnumP = paddedDecimalP 4 <?> "Flight number"
 
--- | Parser for board and off points indicators.
-pointsIndicatorP :: Parser Int
-pointsIndicatorP = packWith 2 alphaPack <?> "Board and off points indicator"
-
 -- | Parser for service types.
 serviceTypeP :: Parser ServiceType
 serviceTypeP = P.satisfy (P.inClass "JSUQGBR") *> pure ServicePax
@@ -256,7 +255,7 @@ toTransitFlow = maybeParse transitFlowP
 
 restrictionP :: Parser Restriction
 restrictionP = P.char ' ' *> pure NoRestriction
-           <|> P.char 'A' *> pure NoTraffic
+           <|> P.char 'A' *> pure NoDirect
            <|> P.char 'B' *> pure NoConnection
            <|> P.char 'C' *> pure NoInternational
            <|> P.char 'D' *> pure QIntlOnlineCnxStop
