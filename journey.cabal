@@ -38,6 +38,7 @@ Executable itineraries
     Journey.SegmentDate,
     Journey.SegmentPeriod,
     Journey.Ssim,
+    Journey.Ssim.Internal,
     Journey.Parsers,
     Journey.Route,
     Journey.GeoCoord,
@@ -79,4 +80,4 @@ Test-Suite tests
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, IntervalMap,
     test-framework, QuickCheck, test-framework-quickcheck2,
-    criterion
+    test-framework-hunit, HUnit, criterion
