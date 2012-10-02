@@ -274,7 +274,10 @@ restrictionP = P.char ' ' *> pure NoRestriction
            <|> P.char 'W' *> pure IntlCnxStop
            <|> P.char 'X' *> pure OnlineCnxStop
            <|> P.char 'Y' *> pure OnlineCnx
-           <|> P.char 'Z' *> pure ExtRestriction
+
+legRestrictionP :: Parser LegRestriction
+legRestrictionP = Just <$> restrictionP
+              <|> P.char 'Z' *> pure Nothing
 
 legRestrictionsP :: Parser LegRestrictions
-legRestrictionsP = P.count 12 $ restrictionP
+legRestrictionsP = P.count 12 $ legRestrictionP

@@ -1,5 +1,6 @@
 module Journey.Restriction (
     Restriction(..)
+  , paxAllowed
   , RestrictService(..)
   , RestrictQualifier(..)
   , mkRestrictNone
@@ -32,8 +33,12 @@ data Restriction = NoRestriction
                  | IntlCnxStop
                  | OnlineCnxStop
                  | OnlineCnx
-                 | ExtRestriction
                  deriving (Show, Eq)
+
+serviceDenied = [ NoDirect, NoDisplay, TechnicalLanding ]
+
+paxAllowed :: RestrictService -> Bool
+paxAllowed r = not $ rPax r `elem` serviceDenied
 
 data RestrictService = MkRestrictService { rPax   :: !Restriction
                                          , rCargo :: !Restriction

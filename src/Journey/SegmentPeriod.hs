@@ -10,6 +10,7 @@ module Journey.SegmentPeriod (
   , spArrivalTime
   , spArrivalDateVariation
   , spElapsedTime
+  , spRestriction
   ) where
 
 import Data.Foldable (foldMap)
@@ -116,10 +117,9 @@ spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail
 
 spRestriction :: SegmentPeriod -> RestrictService
 spRestriction s = if n <= mkLegSequence 11
-    then let r = lpRestrictionAt n . slLeg $ head s
-         in if r /= ExtRestriction
-              then mkRestrictAll r
-              else overflow
+    then case lpRestrictionAt n . slLeg $ head s of
+           Just r  -> mkRestrictAll r
+           Nothing -> overflow
     else overflow
   where n = lpSequence . slLeg $ last s
         overflow = foldMap merge (slDEs $ head s)

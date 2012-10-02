@@ -2,6 +2,7 @@ module Journey.LegPeriod (
     ServiceType(..)
   , LegPeriod(..)
   , lpRestrictionAt
+  , LegRestriction
   , LegRestrictions
   , LegSequence
   , mkLegSequence
@@ -16,7 +17,9 @@ import Journey.Types
 data ServiceType = ServicePax | ServiceCargo | ServiceOther
                    deriving (Show, Eq)
 
-type LegRestrictions = [Restriction]
+type LegRestriction = Maybe Restriction
+
+type LegRestrictions = [LegRestriction]
 
 newtype LegSequence = MkLegSequence { getSequence :: Int }
                       deriving (Show, Eq, Ord)
@@ -45,5 +48,5 @@ data LegPeriod = LegPeriod { lpFlight :: !Flight
                            , lpRestrictions :: !LegRestrictions
                            } deriving (Show)
 
-lpRestrictionAt :: LegSequence -> LegPeriod -> Restriction
+lpRestrictionAt :: LegSequence -> LegPeriod -> LegRestriction
 lpRestrictionAt (MkLegSequence n) l = (lpRestrictions l) !! (n-1)
