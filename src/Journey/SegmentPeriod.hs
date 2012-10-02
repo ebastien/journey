@@ -69,7 +69,7 @@ data SegmentDataElement = IgnoredElement
                         | MkDEI17x !RestrictService
                         | MkDEI713_799
                         | MkDEI71x !RestrictQualifier
-                        deriving (Show)
+                        deriving (Show, Eq)
 
 -- | The projection of a leg to a specific segment.
 data SegmentLeg = MkSegmentLeg { slLeg :: !LegPeriod

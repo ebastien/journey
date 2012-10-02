@@ -43,7 +43,7 @@ paxAllowed r = not $ rPax r `elem` serviceDenied
 data RestrictService = MkRestrictService { rPax   :: !Restriction
                                          , rCargo :: !Restriction
                                          , rMail  :: !Restriction
-                                         } deriving (Show)
+                                         } deriving (Show, Eq)
 
 instance Monoid RestrictService where
   mempty = mkRestrictNone
@@ -74,4 +74,4 @@ mkRestrictAll r = MkRestrictService r r r
 data RestrictQualifier = RestrictBoard
                        | RestrictOff
                        | RestrictBoardOff
-                       deriving (Show)
+                       deriving (Show, Eq)

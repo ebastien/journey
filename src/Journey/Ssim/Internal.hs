@@ -5,6 +5,7 @@ module Journey.Ssim.Internal (
   , ssimRegularSegments
   , legPeriodP
   , segmentP
+  , SegmentData(..)
   ) where
 
 import qualified Data.ByteString.Char8 as B8
