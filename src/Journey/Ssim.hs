@@ -46,7 +46,7 @@ data SegmentData = SegmentData { dFlight :: Flight
                                , dIndex :: !SegmentIndex
                                , dBoard :: !Port
                                , dOff :: !Port
-                               , dDEI :: !SegmentDEI
+                               , dElement :: !SegmentDataElement
                                } deriving Show
 
 -- | Segment index from leg sequences.
@@ -134,9 +134,18 @@ legPeriodP = do
                      srv freq dterm aterm
                      aircraft transit traffic
 
-deiP :: Int -> Parser SegmentDEI
-deiP n = case n of
-  170 -> MkDEI17x . mkRestrictPax <$> restrictionP
+dataRestrictionP :: Parser Restriction
+dataRestrictionP = restrictionP <* P.take 154
+
+-- | Parser for segment data element.
+dataElementP :: Int -> Parser SegmentDataElement
+dataElementP n = case n of
+  170 -> MkDEI17x . mkRestrictPax       <$> dataRestrictionP
+  171 -> MkDEI17x . mkRestrictCargoMail <$> dataRestrictionP
+  172 -> MkDEI17x . mkRestrictCargo     <$> dataRestrictionP
+  173 -> MkDEI17x . mkRestrictMail      <$> dataRestrictionP
+  _   -> ignored
+  where ignored = pure IgnoredElement <* P.take 155
 
 -- | Parser for board and off points indicators.
 segmentIndexP :: Parser SegmentIndex
@@ -156,15 +165,15 @@ segmentP = do
   void $ P.take 13
   iviH <- decimalP 1 <|> (P.char ' ' *> pure 0) <?> "Segment variation (high)"
   idx <- segmentIndexP      <?> "Segment points indicator"
-  _dei <- decimalP 3        <?> "Segment DEI"
+  dei <- decimalP 3         <?> "Segment data element indicator"
   bpoint <- portP           <?> "Segment board point"
   opoint <- portP           <?> "Segment off point"
-  void $ P.take 155
+  element <- dataElementP dei <?> "Segment data element"
   void $ P.take 6
   void $ some P.endOfLine
   let variation = iviL + 100 * iviH
       flight = Flight airline fnum suffix variation
-  return $ SegmentData flight idx bpoint opoint UnknownDEI
+  return $ SegmentData flight idx bpoint opoint element
 
 -- | Parser for trailer records.
 trailerP :: Parser ()
@@ -211,7 +220,7 @@ flightSegments = join . combine
                 mkAssoc y = ((lpBoard legX, lpOff legY), map mkLeg legs)
                   where legY = lgLeg y
                         legs = takeWhile (on (>=) (lpSequence . lgLeg) $ y) xs
-                        mkLeg l = MkSegmentLeg legL . map dDEI
+                        mkLeg l = MkSegmentLeg legL . map dElement
                                 $ filter ((==idx) . dIndex) segL
                           where segL = lgSegments l
                                 legL = lgLeg l

@@ -1,7 +1,7 @@
 module Journey.SegmentPeriod (
     SegmentLeg(..)
   , SegmentPeriod
-  , SegmentDEI(..)
+  , SegmentDataElement(..)
   , spFlight
   , spPeriod
   , alterPeriod
@@ -22,14 +22,57 @@ import Journey.LegPeriod
 import Journey.Restriction
 
 -- | Segment data element.
-data SegmentDEI = MkDEI17x !RestrictService
-                | MkDEI71x !RestrictQualifier
-                | UnknownDEI
-                deriving (Show)
+data SegmentDataElement = IgnoredElement
+                        | MkDEI108
+                        | MkDEI003
+                        | MkDEI113
+                        | MkDEI121
+                        | MkDEI104
+                        | MkDEI005
+                        | MkDEI115
+                        | MkDEI004
+                        | MkDEI114
+                        | MkDEI127
+                        | MkDEI002
+                        | MkDEI009
+                        | MkDEI8xx
+                        | MkDEI9xx
+                        | MkDEI010
+                        | MkDEI050
+                        | MkDEI505
+                        | MkDEI303
+                        | MkDEI301
+                        | MkDEI302
+                        | MkDEI122
+                        | MkDEI503
+                        | MkDEI001
+                        | MkDEI125
+                        | MkDEI007
+                        | MkDEI109
+                        | MkDEI111
+                        | MkDEI220
+                        | MkDEI501
+                        | MkDEI006
+                        | MkDEI011
+                        | MkDEI299
+                        | MkDEI106
+                        | MkDEI101
+                        | MkDEI107
+                        | MkDEI102
+                        | MkDEI198
+                        | MkDEI199
+                        | MkDEI210
+                        | MkDEI507
+                        | MkDEI105
+                        | MkDEI201
+                        | MkDEI17x !RestrictService
+                        | MkDEI713_799
+                        | MkDEI71x !RestrictQualifier
+                        deriving (Show)
 
 -- | The projection of a leg to a specific segment.
 data SegmentLeg = MkSegmentLeg { slLeg :: !LegPeriod
-                               , slDEIs :: [SegmentDEI]
+                               , slDEs :: [SegmentDataElement]
                                } deriving (Show)
 
 -- | A segment as a sequence of legs periods.
@@ -79,6 +122,6 @@ spRestriction s = if n <= mkLegSequence 11
               else overflow
     else overflow
   where n = lpSequence . slLeg $ last s
-        overflow = foldMap merge (slDEIs $ head s)
+        overflow = foldMap merge (slDEs $ head s)
         merge (MkDEI17x r) = r
         merge _            = mkRestrictNone

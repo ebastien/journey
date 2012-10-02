@@ -2,9 +2,12 @@ module Journey.Restriction (
     Restriction(..)
   , RestrictService(..)
   , RestrictQualifier(..)
-  , mkRestrictAll
-  , mkRestrictPax
   , mkRestrictNone
+  , mkRestrictPax
+  , mkRestrictCargo
+  , mkRestrictMail
+  , mkRestrictCargoMail
+  , mkRestrictAll
   ) where
 
 import Data.Monoid (Monoid(..))
@@ -45,14 +48,23 @@ instance Monoid RestrictService where
           m a NoRestriction = a
           m _ _ = error "Traffic restriction overlap"
 
-mkRestrictAll :: Restriction ->  RestrictService
-mkRestrictAll r = MkRestrictService r r r
+mkRestrictNone :: RestrictService
+mkRestrictNone = MkRestrictService NoRestriction NoRestriction NoRestriction
 
 mkRestrictPax :: Restriction ->  RestrictService
 mkRestrictPax r = MkRestrictService r NoRestriction NoRestriction
 
-mkRestrictNone :: RestrictService
-mkRestrictNone = MkRestrictService NoRestriction NoRestriction NoRestriction
+mkRestrictCargo :: Restriction ->  RestrictService
+mkRestrictCargo r = MkRestrictService NoRestriction r NoRestriction
+
+mkRestrictMail :: Restriction ->  RestrictService
+mkRestrictMail r = MkRestrictService NoRestriction NoRestriction r
+
+mkRestrictCargoMail :: Restriction ->  RestrictService
+mkRestrictCargoMail r = MkRestrictService NoRestriction r r
+
+mkRestrictAll :: Restriction ->  RestrictService
+mkRestrictAll r = MkRestrictService r r r
 
 data RestrictQualifier = RestrictBoard
                        | RestrictOff
