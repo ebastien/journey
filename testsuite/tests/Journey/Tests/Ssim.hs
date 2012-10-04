@@ -6,6 +6,7 @@ import qualified Data.Attoparsec.ByteString.Char8 as P
 import qualified Data.ByteString.Char8 as B
 
 import Data.Functor ((<$>))
+import Data.Maybe (fromJust)
 import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit
@@ -28,7 +29,10 @@ noAssertion = const $ return ()
 l1 = ( "Leg"
      , "3 AA    12501J07OCT1207OCT12      7 JFK09000900-04008 LAX12051205-07004 762FAJRDIYBHKMVWNSQLGO      XX                 DDS                                       O                              00000195\n"
      , do l <- legPeriodP
-          return $ (Just . fAirline $ lpFlight l) @?= toAirlineCode "AA "
+          let f = lpFlight l
+          return $ do
+            fAirline f @?= fromJust (toAirlineCode "AA ")
+            fNumber f  @?= 1
      )
 
 l2 = ( "Leg with traffic restriction"
