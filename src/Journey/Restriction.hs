@@ -42,16 +42,48 @@ serviceDenied = [ NoDirect, NoDisplay, TechnicalLanding ]
 paxAllowed :: RestrictService -> Bool
 paxAllowed r = not $ rPax r `elem` serviceDenied
 
-data Cnx c = Cnx c Bool RestrictService
-data Traffic c = Denied | Allowed (Cnx c) (Cnx c) Qualifier
+data Cnx c = Cnx c Bool Restriction
+data Traffic c = Denied
+               | Connected (Cnx c) (Cnx c) Qualifier
 
-instance Monoid (Traffic c) where
+instance Eq c => Monoid (Traffic c) where
   mempty = undefined
-  mappend (Allowed a1 b1 (q1, p1))
-          (Allowed a2 b2 (q2, p2)) = Allowed a1 b2 q
-    where q = ( q1 || not (p1 || l)
-              , p2 || not (q2 || l) )
-          l = undefined
+  mappend (Connected x1 y1 (q1, p1))
+          (Connected x2 y2 (q2, p2)) =
+    if (not p1 || p1 && l1) &&
+       (not q2 || q2 && l2)
+      then Connected x1 y2 q
+      else Denied
+    where q = ( q1 || not (p1 || l1)
+              , p2 || not (q2 || l2) )
+          (Cnx a1 t1 r1) = y1
+          (Cnx a2 t2 r2) = y2
+          o = a1 == a2
+          l1 = isCnxAllowed r1 o t2
+          l2 = isCnxAllowed r2 o t1
+
+isCnxAllowed :: Restriction -> Bool -> Bool -> Bool
+isCnxAllowed r o t = case r of
+  NoRestriction       -> True
+  NoDirect            -> False
+  NoConnection        -> False
+  NoInternational     -> not t
+  QIntlOnlineCnxStop  -> o && t
+  QOnlineCnxStop      -> o
+  NoInterline         -> o
+  QOnlineCnx          -> o
+  NoDisplay           -> False
+  TechnicalLanding    -> False
+  Connection          -> True
+  IntlOnlineStop      -> False
+  IntlConnection      -> t
+  IntlOnlineCnx       -> o && t
+  IntlOnlineCnxStop   -> o && t
+  OnlineStop          -> False
+  ConnectionStop      -> True
+  IntlCnxStop         -> t
+  OnlineCnxStop       -> o
+  OnlineCnx           -> o
 
 data RestrictService = MkRestrictService { rPax   :: !Restriction
                                          , rCargo :: !Restriction
