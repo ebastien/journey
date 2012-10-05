@@ -35,10 +35,23 @@ data Restriction = NoRestriction
                  | OnlineCnx
                  deriving (Show, Eq)
 
+type Qualifier = (Bool, Bool)
+
 serviceDenied = [ NoDirect, NoDisplay, TechnicalLanding ]
 
 paxAllowed :: RestrictService -> Bool
 paxAllowed r = not $ rPax r `elem` serviceDenied
+
+data Cnx c = Cnx c Bool RestrictService
+data Traffic c = Denied | Allowed (Cnx c) (Cnx c) Qualifier
+
+instance Monoid (Traffic c) where
+  mempty = undefined
+  mappend (Allowed a1 b1 (q1, p1))
+          (Allowed a2 b2 (q2, p2)) = Allowed a1 b2 q
+    where q = ( q1 || not (p1 || l)
+              , p2 || not (q2 || l) )
+          l = undefined
 
 data RestrictService = MkRestrictService { rPax   :: !Restriction
                                          , rCargo :: !Restriction
@@ -74,4 +87,5 @@ mkRestrictAll r = MkRestrictService r r r
 data RestrictQualifier = RestrictBoard
                        | RestrictOff
                        | RestrictBoardOff
+                       | RestrictAny
                        deriving (Show, Eq)
