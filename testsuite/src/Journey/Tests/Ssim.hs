@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Journey.Tests.Ssim (ssimTests) where
+module Journey.Tests.Ssim (tests) where
 
 import qualified Data.Attoparsec.ByteString.Char8 as P
 import qualified Data.ByteString.Char8 as B
@@ -19,7 +19,7 @@ import Journey.Flight
 import Journey.Parsers
 import Journey.Ssim.Internal
 
-ssimTests = [
+tests = [
     test_parser
   ]
 
@@ -38,7 +38,7 @@ l1 = ( "Leg"
 l2 = ( "Leg with traffic restriction"
      , "3 AA 76750101J28JUL1228JUL12     6  SCL10151015-0400  CPO11501150-0400  320YBHKMVWNSQLGO            XX                 DDS      LU                  ZAYY         M                              00987059\n"
      , do l <- legPeriodP
-          return $ lpRestrictionAt (mkLegSequence 1) l @?= Just NoDirect
+          return $ lpRestrictionAt (mkLegSequence 1) l @?= Just NoLocal
      )
 
 s1 = ( "Segment"
@@ -50,7 +50,7 @@ s1 = ( "Segment"
 s2 = ( "Segment with traffic restriction data element"
      , "4 AS 80100101J              AB170LAXAKLA                                                                                                                                                          522941\n"
      , do s <- segmentP
-          return $ dElement s @?= MkDEI17x (mkRestrictPax NoDirect)
+          return $ dElement s @?= MkDEI17x (mkRestrictPax NoLocal)
      )
 
 fixtures = [ l1, l2, s1, s2 ]

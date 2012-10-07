@@ -1,6 +1,10 @@
 module Journey.Restriction (
     Restriction(..)
   , paxAllowed
+  , Cnx(..)
+  , Traffic(..)
+  , connect
+  , complete
   , RestrictService(..)
   , RestrictQualifier(..)
   , mkRestrictNone
@@ -14,7 +18,7 @@ module Journey.Restriction (
 import Data.Monoid (Monoid(..))
 
 data Restriction = NoRestriction
-                 | NoDirect
+                 | NoLocal
                  | NoConnection
                  | NoInternational
                  | QIntlOnlineCnxStop
@@ -37,13 +41,15 @@ data Restriction = NoRestriction
 
 type Qualifier = (Bool, Bool)
 
-serviceDenied = [ NoDirect, NoDisplay, TechnicalLanding ]
+serviceDenied = [ NoLocal, NoDisplay, TechnicalLanding ]
 
 paxAllowed :: RestrictService -> Bool
 paxAllowed r = not $ rPax r `elem` serviceDenied
 
 data Cnx c = Cnx c Bool Restriction
+             deriving (Eq, Show)
 data Traffic c = Traffic (Cnx c) (Cnx c) Qualifier
+                 deriving (Eq, Show)
 
 connect :: Eq c => Traffic c -> Traffic c -> Maybe (Traffic c)
 connect (Traffic x1 y1 (q1, p1))
@@ -60,10 +66,15 @@ connect (Traffic x1 y1 (q1, p1))
         l1 = isCnxAllowed r1 o t2
         l2 = isCnxAllowed r2 o t1
 
+complete :: Traffic c -> Maybe (Traffic c)
+complete t@(Traffic _ _ (q, p)) = if not (q || p)
+                                    then Just t
+                                    else Nothing
+
 isCnxAllowed :: Restriction -> Bool -> Bool -> Bool
 isCnxAllowed r o t = case r of
   NoRestriction       -> True
-  NoDirect            -> False
+  NoLocal             -> False
   NoConnection        -> False
   NoInternational     -> not t
   QIntlOnlineCnxStop  -> o && t

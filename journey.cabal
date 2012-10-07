@@ -70,7 +70,7 @@ Executable mctquery
     Journey.MCT.OAGParser
 
 Test-Suite tests
-  Hs-source-dirs:   src, testsuite/tests
+  Hs-source-dirs:   src, testsuite/src
   Type:             exitcode-stdio-1.0
   Main-is:          Tests.hs
   Default-Language: Haskell2010

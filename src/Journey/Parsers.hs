@@ -258,7 +258,7 @@ toTransitFlow = maybeParse transitFlowP
 
 restrictionP :: Parser Restriction
 restrictionP = P.char ' ' *> pure NoRestriction
-           <|> P.char 'A' *> pure NoDirect
+           <|> P.char 'A' *> pure NoLocal
            <|> P.char 'B' *> pure NoConnection
            <|> P.char 'C' *> pure NoInternational
            <|> P.char 'D' *> pure QIntlOnlineCnxStop
