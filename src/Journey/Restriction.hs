@@ -43,24 +43,22 @@ paxAllowed :: RestrictService -> Bool
 paxAllowed r = not $ rPax r `elem` serviceDenied
 
 data Cnx c = Cnx c Bool Restriction
-data Traffic c = Denied
-               | Connected (Cnx c) (Cnx c) Qualifier
+data Traffic c = Traffic (Cnx c) (Cnx c) Qualifier
 
-instance Eq c => Monoid (Traffic c) where
-  mempty = undefined
-  mappend (Connected x1 y1 (q1, p1))
-          (Connected x2 y2 (q2, p2)) =
-    if (not p1 || p1 && l1) &&
-       (not q2 || q2 && l2)
-      then Connected x1 y2 q
-      else Denied
-    where q = ( q1 || not (p1 || l1)
-              , p2 || not (q2 || l2) )
-          (Cnx a1 t1 r1) = y1
-          (Cnx a2 t2 r2) = y2
-          o = a1 == a2
-          l1 = isCnxAllowed r1 o t2
-          l2 = isCnxAllowed r2 o t1
+connect :: Eq c => Traffic c -> Traffic c -> Maybe (Traffic c)
+connect (Traffic x1 y1 (q1, p1))
+        (Traffic x2 y2 (q2, p2)) =
+  if (not p1 || p1 && l1) &&
+     (not q2 || q2 && l2)
+    then Just $ Traffic x1 y2 q
+    else Nothing
+  where q = ( q1 || not (p1 || l1)
+            , p2 || not (q2 || l2) )
+        (Cnx a1 t1 r1) = y1
+        (Cnx a2 t2 r2) = y2
+        o = a1 == a2
+        l1 = isCnxAllowed r1 o t2
+        l2 = isCnxAllowed r2 o t1
 
 isCnxAllowed :: Restriction -> Bool -> Bool -> Bool
 isCnxAllowed r o t = case r of
