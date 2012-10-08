@@ -149,6 +149,9 @@ dataElementP n = case n of
   171 -> MkDEI17x . mkRestrictCargoMail <$> dataRestrictionP
   172 -> MkDEI17x . mkRestrictCargo     <$> dataRestrictionP
   173 -> MkDEI17x . mkRestrictMail      <$> dataRestrictionP
+  710 -> pure (MkDEI71x True  False) <* ignored
+  711 -> pure (MkDEI71x False True)  <* ignored
+  712 -> pure (MkDEI71x True  True)  <* ignored
   _   -> ignored
   where ignored = pure IgnoredElement <* P.take 155
 
@@ -220,14 +223,17 @@ flightSegments = join . combine
                                 idx = segmentIndex (lpSequence legL)
                                                    (lpSequence legY)
 
+-- | A leg is regular if servicing pax on a weekly basis.
 isRegularLeg :: SegmentLeg -> Bool
 isRegularLeg sl = (lpService lp) == ServicePax
                && (lpFrequency lp) == 1
   where lp = slLeg sl
 
+-- | A segment is regular if all legs are regular and no traffic
+--   restriction deny local traffic.
 isRegularSegment :: SegmentPeriod -> Bool
 isRegularSegment s = all isRegularLeg s
-                  && (paxAllowed $ spRestriction s)
+                  && (isLocalAllowed $ spRestrictService s)
 
 -- | Run the SSIM parser on the given file.
 readSsimFile :: String -> IO Ssim

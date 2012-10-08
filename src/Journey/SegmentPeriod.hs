@@ -10,10 +10,12 @@ module Journey.SegmentPeriod (
   , spArrivalTime
   , spArrivalDateVariation
   , spElapsedTime
-  , spRestriction
+  , spRestrictService
+  , spRestrictQualifier
   ) where
 
 import Data.Foldable (foldMap)
+import Data.Monoid (First(..))
 import Data.Time.Clock (secondsToDiffTime)
 
 import Journey.Types
@@ -68,7 +70,7 @@ data SegmentDataElement = IgnoredElement
                         | MkDEI201
                         | MkDEI17x !RestrictService
                         | MkDEI713_799
-                        | MkDEI71x !RestrictQualifier
+                        | MkDEI71x !Bool !Bool
                         deriving (Show, Eq)
 
 -- | The projection of a leg to a specific segment.
@@ -115,8 +117,8 @@ spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail
                     $ ( lpDepartureDateVariation b
                       - lpArrivalDateVariation a ) * 86400 )
 
-spRestriction :: SegmentPeriod -> RestrictService
-spRestriction s = if n <= mkLegSequence 11
+spRestrictService :: SegmentPeriod -> RestrictService
+spRestrictService s = if n <= mkLegSequence 11
     then case lpRestrictionAt n . slLeg $ head s of
            Just r  -> mkRestrictAll r
            Nothing -> overflow
@@ -125,3 +127,10 @@ spRestriction s = if n <= mkLegSequence 11
         overflow = foldMap merge (slDEs $ head s)
         merge (MkDEI17x r) = r
         merge _            = mkRestrictNone
+
+spRestrictQualifier :: SegmentPeriod -> Maybe RestrictQualifier
+spRestrictQualifier s = getFirst $ foldMap (First . merge) (slDEs $ head s)
+  where merge (MkDEI71x q p) = Just (q, p)
+        merge _              = Nothing
+
+

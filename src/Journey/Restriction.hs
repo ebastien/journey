@@ -1,13 +1,14 @@
 module Journey.Restriction (
     Restriction(..)
-  , paxAllowed
+  , isLocalAllowed
+  , Cnx(..)
   , Local(..)
-  , Traffic(..)
+  , Trip(..)
   , initiate
   , connect
-  , complete
+  , finalize
   , RestrictService(..)
-  , RestrictQualifier(..)
+  , RestrictQualifier
   , mkRestrictNone
   , mkRestrictPax
   , mkRestrictCargo
@@ -40,62 +41,63 @@ data Restriction = NoRestriction
                  | OnlineCnx
                  deriving (Show, Eq)
 
-type Qualifier = (Bool, Bool)
+-- | Is local traffic allowed.
+isLocalAllowed :: RestrictService -> Bool
+isLocalAllowed r = not $ rPax r `elem` [ NoLocal, NoDisplay, TechnicalLanding ]
 
-serviceDenied = [ NoLocal, NoDisplay, TechnicalLanding ]
-
-paxAllowed :: RestrictService -> Bool
-paxAllowed r = not $ rPax r `elem` serviceDenied
-
-isQualified :: Restriction -> Bool
-isQualified r = r == QIntlOnlineCnxStop ||
+-- | Is the restriction qualified for online connections.
+isQualified :: Cnx c -> Bool
+isQualified c = r == QIntlOnlineCnxStop ||
                 r == QOnlineCnxStop ||
                 r == QOnlineCnx
+  where r = cRestriction c
 
-data Local c = Local { lCarrier :: c
-                     , lIntl :: Bool
-                     , lRestriction :: Restriction
-                     , lBoardQual :: Bool
-                     , lOffQual :: Bool
-                     } deriving (Eq, Show)
+type RestrictQualifier = (Bool, Bool)
 
 data Cnx c = Cnx { cCarrier :: c
                  , cIntl :: Bool
                  , cRestriction :: Restriction
                  } deriving (Eq, Show)
 
-data Traffic c = Traffic { tInCnx :: Cnx c
-                         , tInQual :: Bool
-                         , tOutCnx :: Cnx c
-                         , tOutQual :: Bool
-                         , tQFlag :: Bool
-                         } deriving (Eq, Show)
+data Local c = Local { lQual :: RestrictQualifier
+                     , lCnx :: Cnx c
+                     } deriving (Eq, Show)
 
-initiate :: Local c -> Maybe (Traffic c)
-initiate (Local c t r q p) = Just $ Traffic cnx q cnx p f
-  where cnx = Cnx c t r
-        f = isQualified r && (p || not q)
+data Trip c = Trip { tQual :: RestrictQualifier
+                   , tQualFlag :: Bool
+                   , tInbound :: Cnx c
+                   , tOutbound :: Cnx c
+                   } deriving (Eq, Show)
 
-connect :: Eq c => Local c -> Traffic c -> Maybe (Traffic c)
-connect (Local c2 t2 r2 q2 p2)
-        (Traffic x1 q1 y1 p1 f) =
+-- | Initiate a trip.
+initiate :: Local c -> Maybe (Trip c)
+initiate (Local (q,p) c) = Just $ Trip (q,p) f c c
+  where f = isQualified c && (p || not q)
+
+-- | Finalize a trip.
+finalize :: Trip c -> Maybe (Trip c)
+finalize t@(Trip (q,p) f _ _) = if not (q || p || f)
+                                  then Just t
+                                  else Nothing
+
+-- | Connect a segment to a trip.
+connect :: Eq c => Local c -> Trip c -> Maybe (Trip c)
+connect (Local (q2,p2) y2)
+        (Trip (q1,p1) f x1 y1) =
   if (not p1 || p1 && l1) &&
      (not q2 || q2 && l2)
-    then Just $ Traffic x1 q (Cnx c2 t2 r2) p f'
+    then Just $ Trip (q,p) f' x1 y2
     else Nothing
   where q = q1 || not (p1 || l1)
         p = p2 || not (q2 || l2)
         (Cnx c1 t1 r1) = y1
+        (Cnx c2 t2 r2) = y2
         o = c1 == c2
         l1 = isCnxAllowed r1 o t2
         l2 = isCnxAllowed r2 o t1
-        f' = f && isQualified r2 && (q2 || not p2)
+        f' = f && isQualified y2 && (q2 || not p2)
 
-complete :: Traffic c -> Maybe (Traffic c)
-complete t = if not (tInQual t || tOutQual t || tQFlag t)
-               then Just t
-               else Nothing
-
+-- | Is construction of transfer connection allowed.
 isCnxAllowed :: Restriction -> Bool -> Bool -> Bool
 isCnxAllowed r o t = case r of
   NoRestriction       -> True
@@ -150,8 +152,3 @@ mkRestrictCargoMail r = MkRestrictService NoRestriction r r
 mkRestrictAll :: Restriction ->  RestrictService
 mkRestrictAll r = MkRestrictService r r r
 
-data RestrictQualifier = RestrictBoard
-                       | RestrictOff
-                       | RestrictBoardOff
-                       | RestrictAny
-                       deriving (Show, Eq)
