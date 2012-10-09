@@ -1,7 +1,7 @@
 module Journey.Restriction (
     Restriction(..)
   , isLocalAllowed
-  , Cnx(..)
+  , Transfer(..)
   , Local(..)
   , Trip(..)
   , initiate
@@ -46,7 +46,7 @@ isLocalAllowed :: RestrictService -> Bool
 isLocalAllowed r = not $ rPax r `elem` [ NoLocal, NoDisplay, TechnicalLanding ]
 
 -- | Is the restriction qualified for online connections.
-isQualified :: Cnx c -> Bool
+isQualified :: Transfer c -> Bool
 isQualified c = r == QIntlOnlineCnxStop ||
                 r == QOnlineCnxStop ||
                 r == QOnlineCnx
@@ -54,31 +54,25 @@ isQualified c = r == QIntlOnlineCnxStop ||
 
 type RestrictQualifier = (Bool, Bool)
 
-data Cnx c = Cnx { cCarrier :: c
-                 , cIntl :: Bool
-                 , cRestriction :: Restriction
-                 } deriving (Eq, Show)
+data Transfer c = Transfer { cCarrier :: c
+                           , cIntl :: Bool
+                           , cRestriction :: Restriction
+                           } deriving (Eq, Show)
 
 data Local c = Local { lQual :: RestrictQualifier
-                     , lCnx :: Cnx c
+                     , lCnx :: Transfer c
                      } deriving (Eq, Show)
 
 data Trip c = Trip { tQual :: RestrictQualifier
                    , tQualFlag :: Bool
-                   , tInbound :: Cnx c
-                   , tOutbound :: Cnx c
+                   , tInbound :: Transfer c
+                   , tOutbound :: Transfer c
                    } deriving (Eq, Show)
 
 -- | Initiate a trip.
 initiate :: Local c -> Maybe (Trip c)
 initiate (Local (q,p) c) = Just $ Trip (q,p) f c c
   where f = isQualified c && (p || not q)
-
--- | Finalize a trip.
-finalize :: Trip c -> Maybe (Trip c)
-finalize t@(Trip (q,p) f _ _) = if not (q || p || f)
-                                  then Just t
-                                  else Nothing
 
 -- | Connect a segment to a trip.
 connect :: Eq c => Local c -> Trip c -> Maybe (Trip c)
@@ -90,16 +84,16 @@ connect (Local (q2,p2) y2)
     else Nothing
   where q = q1 || not (p1 || l1)
         p = p2 || not (q2 || l2)
-        (Cnx c1 t1 r1) = y1
-        (Cnx c2 t2 r2) = y2
+        (Transfer c1 t1 r1) = y1
+        (Transfer c2 t2 r2) = y2
         o = c1 == c2
-        l1 = isCnxAllowed r1 o t2
-        l2 = isCnxAllowed r2 o t1
+        l1 = isConnectable r1 o t2
+        l2 = isConnectable r2 o t1
         f' = f && isQualified y2 && (q2 || not p2)
 
--- | Is construction of transfer connection allowed.
-isCnxAllowed :: Restriction -> Bool -> Bool -> Bool
-isCnxAllowed r o t = case r of
+-- | Is traffic restriction lifted for connection.
+isConnectable :: Restriction -> Bool -> Bool -> Bool
+isConnectable r o t = case r of
   NoRestriction       -> True
   NoLocal             -> False
   NoConnection        -> False
@@ -111,15 +105,49 @@ isCnxAllowed r o t = case r of
   NoDisplay           -> False
   TechnicalLanding    -> False
   Connection          -> True
-  IntlOnlineStop      -> False
+  IntlOnlineStop      -> o && t
   IntlConnection      -> t
   IntlOnlineCnx       -> o && t
   IntlOnlineCnxStop   -> o && t
-  OnlineStop          -> False
+  OnlineStop          -> o
   ConnectionStop      -> True
   IntlCnxStop         -> t
   OnlineCnxStop       -> o
   OnlineCnx           -> o
+
+-- | Finalize a trip.
+finalize :: Trip c -> Maybe (Trip c)
+finalize t@(Trip (q,p) f x y) = if not (q' || p' || f)
+                                  then Just t
+                                  else Nothing
+  where q' = q || not (p || l1)
+        p' = p || not (q || l2)
+        l1 = isFinal $ cRestriction x
+        l2 = isFinal $ cRestriction y
+
+-- | Is traffic restriction lifted at origin or destination.
+isFinal :: Restriction -> Bool
+isFinal r = case r of
+  NoRestriction       -> True
+  NoLocal             -> False
+  NoConnection        -> True
+  NoInternational     -> True
+  QIntlOnlineCnxStop  -> True
+  QOnlineCnxStop      -> True
+  NoInterline         -> True
+  QOnlineCnx          -> False
+  NoDisplay           -> False
+  TechnicalLanding    -> False
+  Connection          -> False
+  IntlOnlineStop      -> True
+  IntlConnection      -> False
+  IntlOnlineCnx       -> False
+  IntlOnlineCnxStop   -> True
+  OnlineStop          -> True
+  ConnectionStop      -> True
+  IntlCnxStop         -> True
+  OnlineCnxStop       -> True
+  OnlineCnx           -> False
 
 data RestrictService = MkRestrictService { rPax   :: !Restriction
                                          , rCargo :: !Restriction
