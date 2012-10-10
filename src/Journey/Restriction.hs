@@ -71,25 +71,31 @@ data Trip c = Trip { tQual :: RestrictQualifier
 
 -- | Initiate a trip.
 initiate :: Local c -> Maybe (Trip c)
-initiate (Local (q,p) c) = Just $ Trip (q,p) f c c
+initiate (Local (q,p) c) = if not q' || l
+                             then Just $ Trip (q',p') f c c
+                             else Nothing
   where f = isQualified c && (p || not q)
+        q' = q || not p && l
+        p' = p || not (q || l)
+        l = isFinal $ cRestriction c
 
 -- | Connect a segment to a trip.
 connect :: Eq c => Local c -> Trip c -> Maybe (Trip c)
-connect (Local (q2,p2) y2)
-        (Trip (q1,p1) f x1 y1) =
-  if (not p1 || p1 && l1) &&
-     (not q2 || q2 && l2)
-    then Just $ Trip (q,p) f' x1 y2
+connect (Local (ql,pl) yl) (Trip (q,p) f x y) =
+  if (not p || lO) &&
+     (not ql || lI) &&
+     (not f || o)
+    then Just $ Trip (q,p') f' x yl
     else Nothing
-  where q = q1 || not (p1 || l1)
-        p = p2 || not (q2 || l2)
-        (Transfer c1 t1 r1) = y1
-        (Transfer c2 t2 r2) = y2
-        o = c1 == c2
-        l1 = isConnectable r1 o t2
-        l2 = isConnectable r2 o t1
-        f' = f && isQualified y2 && (q2 || not p2)
+  where p' = pl || not (ql || lI)
+        Transfer c t r = y
+        Transfer cl tl rl = yl
+        o = c == cl
+        lO = isConnectable r o tl
+        lI = isConnectable rl o t
+        f' = isQualified yl && (
+               o && f && (ql || not pl) ||
+               not o && (pl || not ql) )
 
 -- | Is traffic restriction lifted for connection.
 isConnectable :: Restriction -> Bool -> Bool -> Bool
@@ -117,13 +123,10 @@ isConnectable r o t = case r of
 
 -- | Finalize a trip.
 finalize :: Trip c -> Maybe (Trip c)
-finalize t@(Trip (q,p) f x y) = if not (q' || p' || f)
+finalize t@(Trip (q,p) f x y) = if (not p || l) && not f
                                   then Just t
                                   else Nothing
-  where q' = q || not (p || l1)
-        p' = p || not (q || l2)
-        l1 = isFinal $ cRestriction x
-        l2 = isFinal $ cRestriction y
+  where l = isFinal $ cRestriction y
 
 -- | Is traffic restriction lifted at origin or destination.
 isFinal :: Restriction -> Bool
