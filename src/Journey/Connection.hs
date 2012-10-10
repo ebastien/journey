@@ -51,17 +51,21 @@ notSameFlight i o = case i of
   Nothing -> True
   Just s  -> spFlight s /= spFlight o
 
-isTrafficAllowed :: Maybe SegmentPeriod -> SegmentPeriod -> Bool
-isTrafficAllowed i o = notSameFlight i o
-
 -- | Feasible connections on periods.
 connectionsPeriod :: OnDSegments -> Path -> [[SegmentPeriod]]
 connectionsPeriod onds = map extract . foldl combine acc0 . toSteps
-  where acc0 = [(id, Nothing, secondsToDiffTime 24*60*60, 0)]
+  where acc0 = [(id, Nothing, secondsToDiffTime 24*60*60, 0, Nothing)]
         combine acc (a, b) = do
-            (done, incoming, timeleft, dvar) <- acc
+            (done, incoming, timeleft, dvar, tr) <- acc
             outgoing <- M.find (MkPOnD a b) onds
-            guard $ isTrafficAllowed incoming outgoing
+            guard $ notSameFlight incoming outgoing
+            
+            let l = toLocal outgoing
+                tr' = case tr of
+                  Nothing -> initiate l
+                  Just x  -> connect l x
+            guard $ isJust tr'
+            
             let (p, t, d, cmin, cmax, count) = case incoming of
                   Nothing -> ( maxPeriod
                              , secondsToDiffTime 0
@@ -75,14 +79,17 @@ connectionsPeriod onds = map extract . foldl combine acc0 . toSteps
                              , mct i outgoing
                              , min timeleft $ secondsToDiffTime 6*60*60
                              , (+) )
+            
             case connectPeriod p t d cmin cmax outgoing of
               Nothing         -> mzero
               Just (o, w, d') -> let elapsed = count (spElapsedTime outgoing) w
                                      timeleft' = timeleft - elapsed
                                      e = (o, d')
                                  in return $ (done . (e:), Just o, timeleft', d')
+        
         extract (dlist, Just s', _, d') = let p' = spPeriod s'
                                           in map (restrict p' d') $ dlist []
+        
         restrict p' d' (s, d) = let p = shiftPeriod (d - d') p'
                                 in alterPeriod p s
 

@@ -17,6 +17,7 @@ module Journey.SegmentPeriod (
 import Data.Foldable (foldMap)
 import Data.Monoid (First(..))
 import Data.Time.Clock (secondsToDiffTime)
+import Data.Maybe (fromMaybe)
 
 import Journey.Types
 import Journey.Period
@@ -128,9 +129,8 @@ spRestrictService s = if n <= mkLegSequence 11
         merge (MkDEI17x r) = r
         merge _            = mkRestrictNone
 
-spRestrictQualifier :: SegmentPeriod -> Maybe RestrictQualifier
-spRestrictQualifier s = getFirst $ foldMap (First . merge) (slDEs $ head s)
-  where merge (MkDEI71x q p) = Just (q, p)
+spRestrictQualifier :: SegmentPeriod -> RestrictQualifier
+spRestrictQualifier s = fromMaybe (False, False) q
+  where q = getFirst $ foldMap (First . merge) (slDEs $ head s)
+        merge (MkDEI71x q p) = Just (q, p)
         merge _              = Nothing
-
-
