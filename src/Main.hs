@@ -15,8 +15,8 @@ import Journey.MCT.Attributes (attributes)
 import Journey.MCT.Tree (fromList)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency)
-import Journey.Connection (fromSegments, toOnDs)
 import Journey.Builder (buildAll, buildPathPeriod)
+import Journey.OnDSegments (fromSegments, toOnDs, fromOnD)
 
 main :: IO ()
 main = do
@@ -28,4 +28,4 @@ main = do
 
   let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
 
-  T.putStr . toLazyText . buildAll covs $ buildPathPeriod segdb
+  T.putStr . toLazyText . buildAll covs $ buildPathPeriod (fromOnD segdb)

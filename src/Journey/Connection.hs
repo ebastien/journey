@@ -1,42 +1,24 @@
 module Journey.Connection (
-      fromSegments
-    , toOnDs
-    , connectionsPeriod
-    , OnDSegments
+      connectionsPeriod
     ) where
 
 import Data.Monoid (mconcat, First(..), getFirst)
 import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Foldable (foldMap)
 import Control.Monad (mzero, guard)
 import Data.Time.Calendar (Day, addDays, diffDays)
 import Data.Time.Clock (secondsToDiffTime)
 
-import qualified Journey.EnumMap as M
 import Journey.Types
 import Journey.Period
+import Journey.Flight
 import Journey.SegmentPeriod
+import Journey.Restriction
 
 {-------------------------------------------------------------------------------
   Connection building
 -------------------------------------------------------------------------------}
-
--- | A collection of OnD associations.
-type OnDMap a = M.EnumMap POnD a
-
--- | A collection of OnD and segments associations.
-type OnDSegments = OnDMap [SegmentPeriod]
-
--- | Create the collection of segments grouped by OnD.
-fromSegments :: [(OnD, SegmentPeriod)] -> OnDSegments
-fromSegments = M.group . map packOnd
-  where packOnd ((org,dst), segment) = (MkPOnD org dst, segment)
-
--- | List unique OnDs.
-toOnDs :: OnDSegments -> [OnD]
-toOnDs = map unpackOnd . M.keys
-  where unpackOnd (MkPOnD a b) = (a,b)
 
 -- | Convert a path into a list of OnDs.
 toSteps :: Path -> [OnD]
@@ -51,21 +33,28 @@ notSameFlight i o = case i of
   Nothing -> True
   Just s  -> spFlight s /= spFlight o
 
+toLocal :: (Port -> Country) -> SegmentPeriod -> Local AirlineCode
+toLocal m s = Local q $ Transfer c i r
+  where c = fAirline $ spFlight s
+        i = m (spBoard s) /= m (spOff s)
+        r = rPax $ spRestrictService s
+        q = spRestrictQualifier s
+
 -- | Feasible connections on periods.
-connectionsPeriod :: OnDSegments -> Path -> [[SegmentPeriod]]
-connectionsPeriod onds = map extract . foldl combine acc0 . toSteps
+connectionsPeriod :: (OnD -> [SegmentPeriod]) -> Path -> [[SegmentPeriod]]
+connectionsPeriod segs = map extract . foldl combine acc0 . toSteps
   where acc0 = [(id, Nothing, secondsToDiffTime 24*60*60, 0, Nothing)]
-        combine acc (a, b) = do
+        combine acc ond = do
             (done, incoming, timeleft, dvar, tr) <- acc
-            outgoing <- M.find (MkPOnD a b) onds
+            outgoing <- segs ond
             guard $ notSameFlight incoming outgoing
-            
-            let l = toLocal outgoing
+            {-
+            let l = toLocal undefined outgoing
                 tr' = case tr of
                   Nothing -> initiate l
                   Just x  -> connect l x
             guard $ isJust tr'
-            
+            -}
             let (p, t, d, cmin, cmax, count) = case incoming of
                   Nothing -> ( maxPeriod
                              , secondsToDiffTime 0
@@ -82,13 +71,15 @@ connectionsPeriod onds = map extract . foldl combine acc0 . toSteps
             
             case connectPeriod p t d cmin cmax outgoing of
               Nothing         -> mzero
-              Just (o, w, d') -> let elapsed = count (spElapsedTime outgoing) w
-                                     timeleft' = timeleft - elapsed
-                                     e = (o, d')
-                                 in return $ (done . (e:), Just o, timeleft', d')
+              Just (o, w, d') ->
+                let elapsed = count (spElapsedTime outgoing) w
+                    timeleft' = timeleft - elapsed
+                    e = (o, d')
+                in return $ (done . (e:), Just o, timeleft', d', tr)
         
-        extract (dlist, Just s', _, d') = let p' = spPeriod s'
-                                          in map (restrict p' d') $ dlist []
+        extract (dlist, Just s', _, d', _) =
+          let p' = spPeriod s'
+          in map (restrict p' d') $ dlist []
         
         restrict p' d' (s, d) = let p = shiftPeriod (d - d') p'
                                 in alterPeriod p s

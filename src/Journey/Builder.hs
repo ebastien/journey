@@ -24,7 +24,7 @@ import Journey.Connection
 
 type PathBuilder = Path -> (Builder -> Builder) -> Builder
 
-buildPathPeriod :: OnDSegments -> PathBuilder
+buildPathPeriod :: (OnD -> [SegmentPeriod]) -> PathBuilder
 buildPathPeriod s p b = foldMap (b . buildCnxPeriod) $ connectionsPeriod s p
 
 -- | Build a representation of all itineraries departing on a given day.
