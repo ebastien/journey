@@ -22,7 +22,7 @@ Library
 
 Executable itineraries
   Hs-source-dirs:   src
-  Main-is:          Main.hs
+  Main-is:          Itineraries.hs
   Default-Language: Haskell2010
   GHC-Options:      -O2 -rtsopts
   GHC-Prof-Options: -fprof-auto
