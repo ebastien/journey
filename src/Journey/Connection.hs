@@ -31,7 +31,7 @@ mct :: (Rule -> Maybe MCT) -> SegmentPeriod -> SegmentPeriod -> TimeDuration
 mct regn a b = fromMaybe (t1 - t0 + 1)
              $ secondsToDiffTime . (*60) . fromIntegral . getMCT <$> regn q
   where q = mkQuery ct $ defaultOptions ip tf
-        ip = spOff a /= spBoard b
+        ip = spOff a == spBoard b
         t0 = spArrivalTime a
         t1 = spDepartureTime b
         ct = fromTimes t0 t1
