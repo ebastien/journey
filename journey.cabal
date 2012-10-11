@@ -81,4 +81,16 @@ Test-Suite tests
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, IntervalMap,
     test-framework, QuickCheck, test-framework-quickcheck2,
-    test-framework-hunit, HUnit, criterion
+    test-framework-hunit, HUnit
+
+Test-Suite benchs
+  Hs-source-dirs:   src, testsuite/src
+  Type:             exitcode-stdio-1.0
+  Main-is:          Benchs.hs
+  Default-Language: Haskell2010
+  GHC-Options:      -O2 -rtsopts
+  GHC-Prof-Options: -fprof-auto
+  Build-Depends:
+    base, time, bytestring, bytestring-lexing, attoparsec,
+    vector, text, text-format, containers, IntervalMap,
+    criterion

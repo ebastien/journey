@@ -2,7 +2,9 @@
 
 module Journey.Builder (
     buildAll
+  , buildSome
   , buildPathPeriod
+  , buildForOnD
   ) where
 
 import Data.List (sort, group, intersperse)
@@ -32,12 +34,20 @@ buildPathPeriod :: (OnD -> [SegmentPeriod])
 buildPathPeriod segs geos regn p b = foldMap (b . buildCnxPeriod)
                                    $ connectionsPeriod segs geos regn p
 
--- | Build a representation of all itineraries departing on a given day.
+-- | Build a representation of all itineraries.
 buildAll :: (MetricSpace e) => [PortCoverages e]
                             -> PathBuilder
                             -> Builder
 buildAll covs bld = foldMap (buildForOnD covs bld) onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
+
+-- | Build a representation of some itineraries.
+buildSome :: (MetricSpace e) => [PortCoverages e]
+                             -> PathBuilder
+                             -> Int
+                             -> Builder
+buildSome covs bld n = foldMap (buildForOnD covs bld) onds
+  where onds = take n . map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Build a representation of itineraties for a single OnD.
 buildForOnD :: (MetricSpace e) => [PortCoverages e]
