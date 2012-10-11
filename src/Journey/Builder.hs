@@ -24,8 +24,11 @@ import Journey.Connection
 
 type PathBuilder = Path -> (Builder -> Builder) -> Builder
 
-buildPathPeriod :: (OnD -> [SegmentPeriod]) -> PathBuilder
-buildPathPeriod s p b = foldMap (b . buildCnxPeriod) $ connectionsPeriod s p
+buildPathPeriod :: (OnD -> [SegmentPeriod])
+                -> (Port -> Country)
+                -> PathBuilder
+buildPathPeriod segs geo p b = foldMap (b . buildCnxPeriod)
+                             $ connectionsPeriod segs geo p
 
 -- | Build a representation of all itineraries departing on a given day.
 buildAll :: (MetricSpace e) => [PortCoverages e]

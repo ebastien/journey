@@ -1,7 +1,9 @@
 module Journey.GeoCoord (
       loadReferences
-    , assocToCities
     , adjacency
+    , portToCountry
+    , portToCity
+    , assocToCities
     ) where
 
 import Control.Monad (join)
@@ -14,10 +16,9 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Vector as V
 
 import qualified Journey.EnumMap as M
-import Journey.Route ( MetricSpace(..), PortAdjacencies
-                     , Edge(..), Distance, PortMap )
-import Journey.Types (Port, OnD)
-import Journey.Parsers (toPort)
+import Journey.Route
+import Journey.Types
+import Journey.Parsers
 
 {-
   Geographic coordinates space
@@ -45,6 +46,7 @@ fromDegree (lat, lon) = GeoCoord (radian lat, radian lon)
 -- | Geographic reference data.
 data Reference = Reference { rCoord :: GeoCoord
                            , rCity  :: Port
+                           , rCountry :: Country
                            } deriving (Show)
 
 -- | Port references.
@@ -58,18 +60,26 @@ loadReferences f = return . M.fromList . map parse . drop 1 . T.lines =<< T.read
                 port = fromJust . toPort . T.encodeUtf8 $ col V.! 0
                 lat = read . T.unpack $ col V.! 7
                 lon = read . T.unpack $ col V.! 8
+                country = fromJust . toCountry . T.encodeUtf8 $ col V.! 11
                 city = fromJust . toPort . T.encodeUtf8 $ col V.! 31
-                reference = Reference (fromDegree (lat, lon)) city
+                reference = Reference (fromDegree (lat, lon)) city country
 
-toCity :: PortReferences -> Port -> Port
-toCity refs port = rCity $ M.find port refs
+-- | Country from a port.
+portToCountry :: PortReferences -> Port -> Country
+portToCountry refs port = rCountry $ M.find port refs
 
-toCities :: PortReferences -> OnD -> OnD
-toCities refs = join (***) (toCity refs)
+-- | City from a port.
+portToCity :: PortReferences -> Port -> Port
+portToCity refs port = rCity $ M.find port refs
 
+-- | City pair from an OnD.
+ondToCities :: PortReferences -> OnD -> OnD
+ondToCities refs = join (***) (portToCity refs)
+
+-- | City associations from port associations.
 assocToCities :: PortReferences -> [(OnD, a)] -> [(OnD, a)]
 assocToCities refs = map assoc
-  where assoc (ond, x) = (toCities refs ond, x)
+  where assoc (ond, x) = (ondToCities refs ond, x)
 
 -- | Ports adjacency in geographic coordinates.
 adjacency :: PortReferences -> [OnD] -> PortAdjacencies GeoCoord

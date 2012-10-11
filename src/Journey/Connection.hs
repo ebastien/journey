@@ -41,20 +41,23 @@ toLocal m s = Local q $ Transfer c i r
         q = spRestrictQualifier s
 
 -- | Feasible connections on periods.
-connectionsPeriod :: (OnD -> [SegmentPeriod]) -> Path -> [[SegmentPeriod]]
-connectionsPeriod segs = map extract . foldl combine acc0 . toSteps
+connectionsPeriod :: (OnD -> [SegmentPeriod]) -- ^ Segment lookup by OnD
+                  -> (Port -> Country)        -- ^ Country lookup by port
+                  -> Path                     -- ^ Path to connect
+                  -> [[SegmentPeriod]]
+connectionsPeriod segs geos = extract . foldl combine acc0 . toSteps
   where acc0 = [(id, Nothing, secondsToDiffTime 24*60*60, 0, Nothing)]
         combine acc ond = do
             (done, incoming, timeleft, dvar, tr) <- acc
             outgoing <- segs ond
             guard $ notSameFlight incoming outgoing
-            {-
-            let l = toLocal undefined outgoing
+            
+            let l = toLocal geos outgoing
                 tr' = case tr of
                   Nothing -> initiate l
                   Just x  -> connect l x
             guard $ isJust tr'
-            -}
+            
             let (p, t, d, cmin, cmax, count) = case incoming of
                   Nothing -> ( maxPeriod
                              , secondsToDiffTime 0
@@ -75,14 +78,15 @@ connectionsPeriod segs = map extract . foldl combine acc0 . toSteps
                 let elapsed = count (spElapsedTime outgoing) w
                     timeleft' = timeleft - elapsed
                     e = (o, d')
-                in return $ (done . (e:), Just o, timeleft', d', tr)
+                in return $ (done . (e:), Just o, timeleft', d', tr')
         
-        extract (dlist, Just s', _, d', _) =
-          let p' = spPeriod s'
-          in map (restrict p' d') $ dlist []
+        extract trips = do
+          (dlist, Just s', _, d', tr) <- trips
+          guard . isJust $ tr >>= finalize
+          let p' = spPeriod s' in return . map (restrict p' d') $ dlist []
         
-        restrict p' d' (s, d) = let p = shiftPeriod (d - d') p'
-                                in alterPeriod p s
+        restrict p' d' (s, d) = alterPeriod p s
+          where p = shiftPeriod (d - d') p'
 
 -- | Try to connect an onward segment.
 connectPeriod :: Period

@@ -23,6 +23,7 @@ module Journey.Parsers (
     , stateP
     , regionP
     , countryP
+    , toCountry
     , aircraftTypeP
     , transitFlowP
     , restrictionP

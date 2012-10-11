@@ -14,7 +14,7 @@ import Journey.MCT.OAGParser (readMCTFile)
 import Journey.MCT.Attributes (attributes)
 import Journey.MCT.Tree (fromList)
 import Journey.Route (coverages)
-import Journey.GeoCoord (loadReferences, assocToCities, adjacency)
+import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
 import Journey.Builder (buildAll, buildPathPeriod)
 import Journey.OnDSegments (fromSegments, toOnDs, fromOnD)
 
@@ -27,5 +27,7 @@ main = do
        <$> readSsimFile ssimFile
 
   let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
+      segs = fromOnD segdb
+      geos = portToCountry refs
 
-  T.putStr . toLazyText . buildAll covs $ buildPathPeriod (fromOnD segdb)
+  T.putStr . toLazyText . buildAll covs $ buildPathPeriod segs geos
