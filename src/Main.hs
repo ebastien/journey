@@ -12,7 +12,7 @@ import System.Environment (getArgs)
 import Journey.Ssim (readSsimFile, ssimRegularSegments)
 import Journey.MCT.OAGParser (readMCTFile)
 import Journey.MCT.Attributes (attributes)
-import Journey.MCT.Tree (fromList)
+import Journey.MCT.Tree (fromList, pruneLookup)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
 import Journey.Builder (buildAll, buildPathPeriod)
@@ -29,5 +29,6 @@ main = do
   let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
       segs = fromOnD segdb
       geos = portToCountry refs
+      regn = pruneLookup mctdb
 
-  T.putStr . toLazyText . buildAll covs $ buildPathPeriod segs geos
+  T.putStr . toLazyText . buildAll covs $ buildPathPeriod segs geos regn

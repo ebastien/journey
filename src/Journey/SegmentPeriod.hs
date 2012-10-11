@@ -12,6 +12,8 @@ module Journey.SegmentPeriod (
   , spElapsedTime
   , spRestrictService
   , spRestrictQualifier
+  , spDepartureArea
+  , spArrivalArea
   ) where
 
 import Data.Foldable (foldMap)
@@ -134,3 +136,9 @@ spRestrictQualifier s = fromMaybe (False, False) q
   where q = getFirst $ foldMap (First . merge) (slDEs $ head s)
         merge (MkDEI71x q p) = Just (q, p)
         merge _              = Nothing
+
+spDepartureArea :: SegmentPeriod -> TransitArea
+spDepartureArea = lpDepartureArea . slLeg . head
+
+spArrivalArea :: SegmentPeriod -> TransitArea
+spArrivalArea = lpArrivalArea . slLeg . last

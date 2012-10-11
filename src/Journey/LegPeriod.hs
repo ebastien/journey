@@ -2,6 +2,8 @@ module Journey.LegPeriod (
     ServiceType(..)
   , LegPeriod(..)
   , lpRestrictionAt
+  , lpDepartureArea
+  , lpArrivalArea
   , LegRestriction
   , LegRestrictions
   , LegSequence
@@ -51,5 +53,8 @@ data LegPeriod = LegPeriod { lpFlight :: !Flight
 lpRestrictionAt :: LegSequence -> LegPeriod -> LegRestriction
 lpRestrictionAt (MkLegSequence n) l = (lpRestrictions l) !! (n-1)
 
-lpInternational :: LegPeriod -> Bool
-lpInternational = undefined
+lpDepartureArea :: LegPeriod -> TransitArea
+lpDepartureArea = transitBoard . lpTransitFlow
+
+lpArrivalArea :: LegPeriod -> TransitArea
+lpArrivalArea = transitOff . lpTransitFlow

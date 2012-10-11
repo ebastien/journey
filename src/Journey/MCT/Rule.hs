@@ -3,6 +3,7 @@
 module Journey.MCT.Rule (
     MCT(..)
   , undefMCT
+  , fromTimes
   , Rank(..)
   , undefRank
   , Rule(..)
@@ -11,6 +12,7 @@ module Journey.MCT.Rule (
   , fromOption
   , isKnown
   , Options(..)
+  , defaultOptions
   , mkRule
   , mkQuery
   ) where
@@ -24,6 +26,9 @@ newtype MCT = MkMCT { getMCT :: Int }
 
 undefMCT :: MCT
 undefMCT = MkMCT maxBound
+
+fromTimes :: ScheduleTime -> ScheduleTime -> MCT
+fromTimes a b = MkMCT . round $ (b - a) / 60
 
 newtype Rank = MkRank { getRank :: Int }
                       deriving (Eq, Ord, Bounded, Show)
@@ -77,6 +82,11 @@ data Options = MkOptions { rIntraPort :: Bool
                          , rValidityEnd :: Option Day
                          }
                          deriving (Eq, Show)
+
+defaultOptions :: Bool -> TransitFlow -> Options
+defaultOptions i t = MkOptions i Unknown Unknown Unknown t
+  Unknown Unknown Unknown Unknown Unknown Unknown Unknown Unknown Unknown Unknown
+  Unknown Unknown Unknown Unknown Unknown Unknown Unknown Unknown Unknown Unknown
 
 mkRule :: Rank -> MCT -> Options -> Rule
 mkRule = MkRule

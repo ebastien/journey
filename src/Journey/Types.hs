@@ -119,7 +119,9 @@ instance Show Terminal where
 
 data TransitArea = Domestic | International deriving (Eq, Ord, Enum, Show)
 
-data TransitFlow = MkTransitFlow TransitArea TransitArea deriving (Eq, Ord, Show)
+data TransitFlow = MkTransitFlow { transitBoard :: TransitArea
+                                 , transitOff :: TransitArea
+                                 } deriving (Eq, Ord, Show)
 
 instance Enum TransitFlow where
   fromEnum (MkTransitFlow a b) = 2 * fromEnum a + fromEnum b

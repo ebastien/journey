@@ -24,7 +24,8 @@ Executable itineraries
   Hs-source-dirs:   src
   Main-is:          Main.hs
   Default-Language: Haskell2010
-  GHC-Options:      -O2
+  GHC-Options:      -O2 -rtsopts
+  GHC-Prof-Options: -fprof-auto
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, IntervalMap

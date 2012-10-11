@@ -2,6 +2,7 @@ module Journey.Connection (
       connectionsPeriod
     ) where
 
+import Data.Functor ((<$>))
 import Data.Monoid (mconcat, First(..), getFirst)
 import Data.List (find)
 import Data.Maybe (fromMaybe, isJust)
@@ -15,6 +16,7 @@ import Journey.Period
 import Journey.Flight
 import Journey.SegmentPeriod
 import Journey.Restriction
+import Journey.MCT.Rule
 
 {-------------------------------------------------------------------------------
   Connection building
@@ -24,9 +26,16 @@ import Journey.Restriction
 toSteps :: Path -> [OnD]
 toSteps path = zip path $ tail path
 
--- | Stub for MCT computation.
-mct :: SegmentPeriod -> SegmentPeriod -> TimeDuration
-mct _ _ = secondsToDiffTime 30*60
+-- | Minimal support for MCT check.
+mct :: (Rule -> Maybe MCT) -> SegmentPeriod -> SegmentPeriod -> TimeDuration
+mct regn a b = fromMaybe (t1 - t0 + 1)
+             $ secondsToDiffTime . (*60) . fromIntegral . getMCT <$> regn q
+  where q = mkQuery ct $ defaultOptions ip tf
+        ip = spOff a /= spBoard b
+        t0 = spArrivalTime a
+        t1 = spDepartureTime b
+        ct = fromTimes t0 t1
+        tf = MkTransitFlow (spArrivalArea a) (spDepartureArea b)
 
 notSameFlight :: Maybe SegmentPeriod -> SegmentPeriod -> Bool
 notSameFlight i o = case i of
@@ -43,9 +52,10 @@ toLocal m s = Local q $ Transfer c i r
 -- | Feasible connections on periods.
 connectionsPeriod :: (OnD -> [SegmentPeriod]) -- ^ Segment lookup by OnD
                   -> (Port -> Country)        -- ^ Country lookup by port
+                  -> (Rule -> Maybe MCT)      -- ^ MCT lookup
                   -> Path                     -- ^ Path to connect
                   -> [[SegmentPeriod]]
-connectionsPeriod segs geos = extract . foldl combine acc0 . toSteps
+connectionsPeriod segs geos regn = extract . foldl combine acc0 . toSteps
   where acc0 = [(id, Nothing, secondsToDiffTime 24*60*60, 0, Nothing)]
         combine acc ond = do
             (done, incoming, timeleft, dvar, tr) <- acc
@@ -68,7 +78,7 @@ connectionsPeriod segs geos = extract . foldl combine acc0 . toSteps
                   Just i  -> ( spPeriod i
                              , spArrivalTime i
                              , spArrivalDateVariation i
-                             , mct i outgoing
+                             , mct regn i outgoing
                              , min timeleft $ secondsToDiffTime 6*60*60
                              , (+) )
             
