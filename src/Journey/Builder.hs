@@ -14,6 +14,7 @@ import Data.Text.Lazy.Builder (Builder, fromString, singleton)
 import Data.Text.Format (build, left, Shown(..))
 import Data.Time.LocalTime (TimeOfDay(..), timeToTimeOfDay)
 import Data.Time.Calendar (Day, toGregorian)
+import Control.Parallel.Strategies (parMap, rseq)
 
 import Journey.Types
 import Journey.Period
@@ -46,7 +47,7 @@ buildSome :: (MetricSpace e) => [PortCoverages e]
                              -> PathBuilder
                              -> Int
                              -> Builder
-buildSome covs bld n = foldMap (buildForOnD covs bld) onds
+buildSome covs bld n = mconcat $ parMap rseq (buildForOnD covs bld) onds
   where onds = take n . map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Build a representation of itineraties for a single OnD.
