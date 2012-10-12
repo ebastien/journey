@@ -5,7 +5,7 @@ module Journey.Connection (
 import Data.Functor ((<$>))
 import Data.Monoid (mconcat, First(..), getFirst)
 import Data.List (find)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, fromJust)
 import Data.Foldable (foldMap)
 import Control.Monad (mzero, guard)
 import Data.Time.Calendar (Day, addDays, diffDays)
@@ -27,9 +27,8 @@ toSteps :: Path -> [OnD]
 toSteps path = zip path $ tail path
 
 -- | Minimal support for MCT check.
-mct :: (Rule -> Maybe MCT) -> SegmentPeriod -> SegmentPeriod -> TimeDuration
-mct regn a b = fromMaybe (t1 - t0 + 1)
-             $ secondsToDiffTime . (*60) . fromIntegral . getMCT <$> regn q
+isMCT :: (Rule -> Maybe MCT) -> SegmentPeriod -> SegmentPeriod -> Bool
+isMCT regn a b = isJust $ secondsToDiffTime . (*60) . fromIntegral . getMCT <$> regn q
   where q = mkQuery ct $ defaultOptions ip tf
         ip = spOff a == spBoard b
         t0 = spArrivalTime a
@@ -78,7 +77,7 @@ connectionsPeriod segs geos regn = extract . foldl combine acc0 . toSteps
                   Just i  -> ( spPeriod i
                              , spArrivalTime i
                              , spArrivalDateVariation i
-                             , mct regn i outgoing
+                             , secondsToDiffTime 20*60
                              , min timeleft $ secondsToDiffTime 6*60*60
                              , (+) )
             
@@ -91,9 +90,13 @@ connectionsPeriod segs geos regn = extract . foldl combine acc0 . toSteps
                 in return $ (done . (e:), Just o, timeleft', d', tr')
         
         extract trips = do
-          (dlist, Just s', _, d', tr) <- trips
+          (dlist, s', _, d', tr) <- trips
           guard . isJust $ tr >>= finalize
-          let p' = spPeriod s' in return . map (restrict p' d') $ dlist []
+          let p' = spPeriod $ fromJust s'
+              xs = dlist []
+              ys = map fst xs
+          guard . all (uncurry $ isMCT regn) $ zip ys (tail ys)
+          return $ map (restrict p' d') xs
         
         restrict p' d' (s, d) = alterPeriod p s
           where p = shiftPeriod (d - d') p'

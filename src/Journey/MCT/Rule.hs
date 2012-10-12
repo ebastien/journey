@@ -28,7 +28,7 @@ undefMCT :: MCT
 undefMCT = MkMCT maxBound
 
 fromTimes :: ScheduleTime -> ScheduleTime -> MCT
-fromTimes a b = MkMCT . round $ (b - a) / 60
+fromTimes a b = MkMCT $ fromEnum (b-a) `div` (60*1000000000000)
 
 newtype Rank = MkRank { getRank :: Int }
                       deriving (Eq, Ord, Bounded, Show)

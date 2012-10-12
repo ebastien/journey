@@ -33,4 +33,4 @@ main = do
       regn = pruneLookup mctdb
       bldr = buildPathPeriod segs geos regn
 
-  T.putStr . toLazyText $ buildSome covs bldr 200
+  T.putStr . toLazyText $ buildSome covs bldr 800
