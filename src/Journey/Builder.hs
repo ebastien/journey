@@ -8,9 +8,10 @@ module Journey.Builder (
   ) where
 
 import Data.List (sort, group, intersperse)
-import Data.Monoid (mconcat, mempty)
+import Data.Monoid (mconcat, mempty, mappend)
 import Data.Foldable (foldMap)
-import Data.Text.Lazy.Builder (Builder, fromString, singleton)
+import Data.Text.Lazy (fromChunks, toStrict)
+import Data.Text.Lazy.Builder (Builder, fromString, singleton, fromLazyText, toLazyText)
 import Data.Text.Format (build, left, Shown(..))
 import Data.Time.LocalTime (TimeOfDay(..), timeToTimeOfDay)
 import Data.Time.Calendar (Day, toGregorian)
@@ -46,8 +47,9 @@ buildSome :: (MetricSpace e) => [PortCoverages e]
                              -> PathBuilder
                              -> Int
                              -> Builder
-buildSome covs bld n = foldMap (buildForOnD covs bld) onds
+buildSome covs bld n = fromLazyText . fromChunks $ parMap rseq bld' onds
   where onds = take n . map head . group . sort $ concatMap coveredOnDs covs
+        bld' = toStrict . toLazyText . buildForOnD covs bld
 
 -- | Build a representation of itineraties for a single OnD.
 buildForOnD :: (MetricSpace e) => [PortCoverages e]
