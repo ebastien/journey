@@ -15,7 +15,7 @@ import Data.Text.Lazy.Builder (Builder, fromString, singleton, fromLazyText, toL
 import Data.Text.Format (build, left, Shown(..))
 import Data.Time.LocalTime (TimeOfDay(..), timeToTimeOfDay)
 import Data.Time.Calendar (Day, toGregorian)
-import Control.Parallel.Strategies (parMap, rseq)
+import Control.Parallel.Strategies (rseq, parListChunk, withStrategy)
 
 import Journey.Types
 import Journey.Period
@@ -48,9 +48,10 @@ buildSome :: (MetricSpace e) => [PortCoverages e]
                              -> PathBuilder
                              -> Int
                              -> Builder
-buildSome covs bld n = fromLazyText . fromChunks $ parMap rseq bld' onds
+buildSome covs bld n = fromLazyText . fromChunks . withStrategy (parListChunk chks rseq) . map bld' $ onds
   where onds = take n . map head . group . sort $ concatMap coveredOnDs covs
         bld' = toStrict . toLazyText . buildForOnD covs bld
+        chks = 100
 
 -- | Build a representation of itineraties for a single OnD.
 buildForOnD :: (MetricSpace e) => [PortCoverages e]
