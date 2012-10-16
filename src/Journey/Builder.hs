@@ -2,7 +2,7 @@
 
 module Journey.Builder (
     buildAll
-  , buildSome
+  , buildSplit
   , buildPathPeriod
   , buildForOnD
   ) where
@@ -10,12 +10,11 @@ module Journey.Builder (
 import Data.List (sort, group, intersperse)
 import Data.Monoid (mconcat, mempty)
 import Data.Foldable (foldMap)
-import Data.Text.Lazy (fromChunks, toStrict)
-import Data.Text.Lazy.Builder (Builder, fromString, singleton, fromLazyText, toLazyText)
+import Data.Functor ((<$>))
+import Data.Text.Lazy.Builder (Builder, fromString, singleton)
 import Data.Text.Format (build, left, Shown(..))
 import Data.Time.LocalTime (TimeOfDay(..), timeToTimeOfDay)
 import Data.Time.Calendar (Day, toGregorian)
-import Control.Parallel.Strategies (rseq, parListChunk, withStrategy)
 
 import Journey.Types
 import Journey.Period
@@ -43,15 +42,17 @@ buildAll :: (MetricSpace e) => [PortCoverages e]
 buildAll covs bld = foldMap (buildForOnD covs bld) onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
--- | Build a representation of some itineraries.
-buildSome :: (MetricSpace e) => [PortCoverages e]
+-- | Build a representation of all itineraries.
+buildSplit :: (MetricSpace e) => [PortCoverages e]
                              -> PathBuilder
                              -> Int
-                             -> Builder
-buildSome covs bld n = fromLazyText . fromChunks . withStrategy (parListChunk chks rseq) . map bld' $ onds
-  where onds = take n . map head . group . sort $ concatMap coveredOnDs covs
-        bld' = toStrict . toLazyText . buildForOnD covs bld
-        chks = 100
+                             -> [Builder]
+buildSplit covs bld n = foldMap (buildForOnD covs bld) <$> chunk n onds
+  where onds = map head . group . sort $ concatMap coveredOnDs covs
+
+chunk :: Int -> [a] -> [[a]]
+chunk _ [] = []
+chunk n xs = as : chunk n bs where (as,bs) = splitAt n xs
 
 -- | Build a representation of itineraties for a single OnD.
 buildForOnD :: (MetricSpace e) => [PortCoverages e]
