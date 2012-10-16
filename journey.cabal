@@ -93,4 +93,4 @@ Test-Suite benchs
   Build-Depends:
     base, time, bytestring, bytestring-lexing, attoparsec,
     vector, text, text-format, containers, IntervalMap, parallel,
-    criterion
+    criterion, parallel-io
