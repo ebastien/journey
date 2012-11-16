@@ -51,6 +51,37 @@ Executable itineraries
     Journey.MCT.Attributes,
     Journey.MCT.OAGParser
 
+Executable onditineraries
+  Hs-source-dirs:   src
+  Main-is:          OnDItineraries.hs
+  Default-Language: Haskell2010
+  GHC-Options:      -O3 -rtsopts -threaded -eventlog
+  GHC-Prof-Options: -fprof-auto
+  Build-Depends:
+    base, time, bytestring, bytestring-lexing, attoparsec,
+    vector, text, text-format, containers, IntervalMap, parallel
+  Other-Modules:
+    Journey.EnumMap,
+    Journey.Types,
+    Journey.Restriction,
+    Journey.Flight,
+    Journey.LegPeriod,
+    Journey.Period,
+    Journey.SegmentDate,
+    Journey.SegmentPeriod,
+    Journey.Ssim,
+    Journey.Ssim.Internal,
+    Journey.Parsers,
+    Journey.Route,
+    Journey.GeoCoord,
+    Journey.Connection,
+    Journey.Builder
+    Journey.MCT.DecisionTree,
+    Journey.MCT.Rule,
+    Journey.MCT.Tree,
+    Journey.MCT.Attributes,
+    Journey.MCT.OAGParser
+
 Executable mctquery
   Hs-source-dirs:   src
   Main-is:          MCTQuery.hs
