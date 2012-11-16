@@ -5,10 +5,11 @@ module Journey.Builder (
   , buildSplit
   , buildPathPeriod
   , buildForOnD
+  , buildAllPaths
   ) where
 
 import Data.List (sort, group, intersperse)
-import Data.Monoid (mconcat, mempty)
+import Data.Monoid (mconcat, mempty, mappend)
 import Data.Foldable (foldMap)
 import Data.Functor ((<$>))
 import Data.Text.Lazy.Builder (Builder, fromString, singleton)
@@ -63,6 +64,15 @@ buildForOnD covs bld ond = foldMap f covs
   where f cov = case ondPaths ond cov of
                   Just paths -> foldMap (buildForPath ond bld) paths
                   Nothing    -> mempty
+
+buildAllPaths :: (MetricSpace e) => [PortCoverages e]
+                                 -> Builder
+buildAllPaths covs = foldMap f onds
+  where f ond = foldMap (g ond) covs
+        g ond cov = case ondPaths ond cov of
+          Just ps -> foldMap (\p -> buildPath p `mappend` singleton '\n') ps
+          Nothing -> mempty
+        onds = map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Build a representation of itineraties for a single path.
 buildForPath :: OnD -> PathBuilder -> Path -> Builder
