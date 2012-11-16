@@ -2,14 +2,14 @@ module Journey.GeoCoord (
       loadReferences
     , adjacency
     , portToCountry
-    , portToCity
     , assocToCities
     ) where
 
 import Control.Monad (join)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, mapMaybe)
 import Control.Arrow ((***))
 import Data.List (nub)
+import Data.Functor ((<$>))
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as T
@@ -47,6 +47,7 @@ fromDegree (lat, lon) = GeoCoord (radian lat, radian lon)
 data Reference = Reference { rCoord :: GeoCoord
                            , rCity  :: Port
                            , rCountry :: Country
+                           , rAirport :: Bool
                            } deriving (Show)
 
 -- | Port references.
@@ -61,25 +62,26 @@ loadReferences f = return . M.fromList . map parse . drop 1 . T.lines =<< T.read
                 lat = read . T.unpack $ col V.! 7
                 lon = read . T.unpack $ col V.! 8
                 country = fromJust . toCountry . T.encodeUtf8 $ col V.! 11
+                airport = 'Y' == T.head (col V.! 25)
                 city = fromJust . toPort . T.encodeUtf8 $ col V.! 31
-                reference = Reference (fromDegree (lat, lon)) city country
+                reference = Reference (fromDegree (lat, lon)) city country airport
 
 -- | Country from a port.
 portToCountry :: PortReferences -> Port -> Country
 portToCountry refs port = rCountry $ M.find port refs
 
--- | City from a port.
-portToCity :: PortReferences -> Port -> Port
-portToCity refs port = rCity $ M.find port refs
-
--- | City pair from an OnD.
-ondToCities :: PortReferences -> OnD -> OnD
-ondToCities refs = join (***) (portToCity refs)
+-- | Filter for airport and convert to city OnD.
+airportOnD :: PortReferences -> OnD -> Maybe OnD
+airportOnD refs (a,b) = if rAirport a' && rAirport b'
+                          then Just (rCity a', rCity b')
+                          else Nothing
+  where a' = M.find a refs
+        b' = M.find b refs
 
 -- | City associations from port associations.
 assocToCities :: PortReferences -> [(OnD, a)] -> [(OnD, a)]
-assocToCities refs = map assoc
-  where assoc (ond, x) = (ondToCities refs ond, x)
+assocToCities refs = mapMaybe assoc
+  where assoc (ond, x) = flip (,) x <$> airportOnD refs ond
 
 -- | Ports adjacency in geographic coordinates.
 adjacency :: PortReferences -> [OnD] -> PortAdjacencies GeoCoord
