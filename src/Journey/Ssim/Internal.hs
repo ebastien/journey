@@ -16,7 +16,7 @@ import qualified Data.Attoparsec.ByteString.Char8 as P
 import qualified Data.Attoparsec.ByteString.Lazy as LP
 import Data.Functor ((<$>))
 import Control.Monad (void, join, guard)
-import Control.Applicative (pure, some, (<*>), (<*), (*>), (<|>))
+import Control.Applicative (pure, some, many, (<*>), (<*), (*>), (<|>))
 import Data.List (groupBy, elemIndex)
 import Data.Function (on)
 import Data.Maybe (fromMaybe)
@@ -193,7 +193,7 @@ trailerP = (P.char '5'       <?> "Trailer record type")
 -- | Parser for leg groups.
 legGroupP :: Parser LegGroup
 legGroupP = LegGroup <$> (legPeriodP    <?> "Leg record")
-                     <*> (some segmentP <?> "Leg segments")
+                     <*> (many segmentP <?> "Leg segments")
 
 -- | Parser for carrier groups.
 carrierGroupP :: Parser CarrierGroup
