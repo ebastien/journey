@@ -5,7 +5,7 @@ module Journey.GeoCoord (
     , assocToCities
     ) where
 
-import Control.Monad (join)
+import Control.Monad (join, guard)
 import Data.Maybe (fromJust, mapMaybe)
 import Control.Arrow ((***))
 import Data.List (nub)
@@ -70,18 +70,18 @@ loadReferences f = return . M.fromList . map parse . drop 1 . T.lines =<< T.read
 portToCountry :: PortReferences -> Port -> Country
 portToCountry refs port = rCountry $ M.find port refs
 
--- | Filter for airport and convert to city OnD.
-airportOnD :: PortReferences -> OnD -> Maybe OnD
-airportOnD refs (a,b) = if rAirport a' && rAirport b'
-                          then Just (rCity a', rCity b')
-                          else Nothing
-  where a' = M.find a refs
-        b' = M.find b refs
+-- | Filter for airports and convertion to city OnD.
+citiesOnDFilter :: PortReferences -> OnD -> Maybe OnD
+citiesOnDFilter refs (a,b) = do
+  a' <- M.lookup a refs
+  b' <- M.lookup b refs
+  guard $ rAirport a' && rAirport b'
+  return (rCity a', rCity b')
 
 -- | City associations from port associations.
 assocToCities :: PortReferences -> [(OnD, a)] -> [(OnD, a)]
 assocToCities refs = mapMaybe assoc
-  where assoc (ond, x) = flip (,) x <$> airportOnD refs ond
+  where assoc (ond, x) = flip (,) x <$> citiesOnDFilter refs ond
 
 -- | Ports adjacency in geographic coordinates.
 adjacency :: PortReferences -> [OnD] -> PortAdjacencies GeoCoord

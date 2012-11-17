@@ -43,5 +43,5 @@ main = do
       regn = pruneLookup mctdb
       bldr = buildForOnD covs $ buildPathPeriod segs geos regn
 
-  LT.putStr . toLazyText $ buildAllPaths covs
+  -- LT.putStr . toLazyText $ buildAllPaths covs
   LT.putStr . toLazyText $ foldMap bldr onds
