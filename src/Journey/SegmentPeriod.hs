@@ -14,6 +14,7 @@ module Journey.SegmentPeriod (
   , spRestrictQualifier
   , spDepartureArea
   , spArrivalArea
+  , spPath
   ) where
 
 import Data.Foldable (foldMap)
@@ -142,3 +143,7 @@ spDepartureArea = lpDepartureArea . slLeg . head
 
 spArrivalArea :: SegmentPeriod -> TransitArea
 spArrivalArea = lpArrivalArea . slLeg . last
+
+spPath :: SegmentPeriod -> Path
+spPath s = board : map (lpOff . slLeg) s
+  where board = lpBoard . slLeg $ head s

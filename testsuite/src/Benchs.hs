@@ -19,7 +19,7 @@ import Journey.MCT.Tree (fromList, pruneLookup)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
 import Journey.Builder (buildSplit, buildPathPeriod)
-import Journey.OnDSegments (fromSegments, toOnDs, fromOnD)
+import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Parsers (toPort)
 
 buildInFile :: FilePath -> Builder -> IO ()
@@ -38,7 +38,7 @@ main = do
   segdb <- fromSegments . assocToCities refs . ssimRegularSegments
        <$> readSsimFile ssimFile
 
-  let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
+  let covs = take 3 . coverages . adjacency refs $ toOnDPaths segdb
       segs = fromOnD segdb
       geos = portToCountry refs
       regn = pruneLookup mctdb

@@ -19,7 +19,7 @@ import Journey.MCT.Tree (fromList, pruneLookup)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
 import Journey.Builder (buildForOnD, buildPathPeriod, buildAllPaths)
-import Journey.OnDSegments (fromSegments, toOnDs, fromOnD)
+import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Types (OnD)
 import Journey.Parsers (toPort)
 
@@ -37,7 +37,7 @@ main = do
        <$> readSsimFile ssimFile
   onds <- readOnDs ondsFile
 
-  let covs = take 3 . coverages . adjacency refs $ toOnDs segdb
+  let covs = take 3 . coverages . adjacency refs $ toOnDPaths segdb
       segs = fromOnD segdb
       geos = portToCountry refs
       regn = pruneLookup mctdb

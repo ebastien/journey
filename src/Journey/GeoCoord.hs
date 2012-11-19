@@ -5,10 +5,11 @@ module Journey.GeoCoord (
     , assocToCities
     ) where
 
-import Control.Monad (join, guard)
+import Control.Monad (join, guard, foldM)
 import Data.Maybe (fromJust, mapMaybe, isJust)
 import Control.Arrow ((***))
-import Data.List (nub)
+import Data.List (groupBy)
+import Data.Function (on)
 import Data.Functor ((<$>))
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -82,11 +83,22 @@ assocToCities :: PortReferences -> [(OnD, a)] -> [(OnD, a)]
 assocToCities refs = mapMaybe assoc
   where assoc (ond, x) = flip (,) x <$> citiesOnDFilter refs ond
 
+-- | Geographic path length.
+pathLength :: PortReferences -> Path -> Maybe Distance
+pathLength refs p = foldM f 0 $ zip p (tail p)
+  where f l (o,d) = do
+          co <- rCoord <$> M.lookup o refs
+          cd <- rCoord <$> M.lookup d refs
+          return $ l + distance co cd
+
 -- | Ports adjacency in geographic coordinates.
-adjacency :: PortReferences -> [OnD] -> PortAdjacencies GeoCoord
-adjacency refs = M.group . map edge . nub . filter valid
-  where valid (org, dst) = org /= dst
-        edge (org, dst) = (dst, Edge org coord_org coord_dst dist)
-          where dist = distance coord_org coord_dst
-                coord_org = rCoord $ M.find org refs
-                coord_dst = rCoord $ M.find dst refs
+adjacency :: PortReferences -> [(OnD, [Path])] -> PortAdjacencies GeoCoord
+adjacency refs = M.group . mapMaybe edge . filter valid
+  where valid ((o,d), _) = o /= d
+        edge ((o,d), paths) = do
+          dist <- case mapMaybe (pathLength refs) paths of
+                    [] -> Nothing
+                    ps -> Just $ minimum ps
+          co <- rCoord <$> M.lookup o refs
+          cd <- rCoord <$> M.lookup d refs
+          return (d, Edge o co cd dist)

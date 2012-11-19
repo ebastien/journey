@@ -69,7 +69,7 @@ competitiveDistance elemA distAB steps = fmap fst $ foldM detour (distAB, distAB
           | otherwise                     = Nothing
           where directAM = distance elemA elemM
                 indirectAM = indirectAN + distNM
-                ratio = 1.5
+                ratio = 1.8
 
 -- | Extend the coverage by one more step.
 extendedCoverage :: (MetricSpace e) => PortAdjacencies e

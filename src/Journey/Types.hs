@@ -6,6 +6,7 @@ module Journey.Types (
     , Port(..)
     , OnD
     , POnD(..)
+    , unpackOnD
     , Path
     , TimeDuration
     , TimeVariation
@@ -73,6 +74,10 @@ type Path = [Port]
 
 -- | A packed OnD.
 data POnD = MkPOnD !Port !Port deriving (Eq, Show)
+
+-- | Convert a packed OnD to an OnD.
+unpackOnD :: POnD -> OnD
+unpackOnD (MkPOnD a b) = (a,b)
 
 instance Enum POnD where
   fromEnum (MkPOnD a b) = (fromEnum a) * (26^(3::Int)) + (fromEnum b)
