@@ -62,7 +62,7 @@ loadReferences f = return . M.fromList . mapMaybe parse . drop 1 . T.lines =<< T
               lon = read . T.unpack $ col V.! 8
               country = fromJust . toCountry . T.encodeUtf8 $ col V.! 11
               city = fromJust . toPort . T.encodeUtf8 $ col V.! 31
-              category = col V.! 43
+              category = col V.! 34
           guard . isJust $ T.find (=='A') category
           return (port, Reference (fromDegree (lat, lon)) city country)
 
