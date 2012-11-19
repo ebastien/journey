@@ -13,6 +13,7 @@ module Journey.Route (
     
 import Control.Monad (foldM, mzero)
 import Data.Maybe (mapMaybe)
+import Data.Functor ((<$>))
 
 import qualified Journey.EnumMap as M
 import Journey.Types (Port, Path, OnD)
@@ -63,7 +64,7 @@ data Edge e = Edge
 
 -- | Competitive distance according to direct vs. indirect distances.
 competitiveDistance :: (MetricSpace e) => e -> Distance -> [Step e] -> Maybe Distance
-competitiveDistance elemA distAB steps = fmap fst $ foldM detour (distAB, distAB) steps
+competitiveDistance elemA distAB steps = fst <$> foldM detour (distAB, distAB) steps
   where detour (indirectAN, _) (Step distNM elemM)
           | indirectAM < ratio * directAM = Just (indirectAM, directAM)
           | otherwise                     = Nothing
@@ -95,7 +96,7 @@ extendedCoverage adj covs@(cov:_) = flip (:) covs $ groupOrg $ do
                     [] -> True
                     xs -> d <= (minimum $ map (iDist . head) xs) * ratio
                 alternatives = mapMaybe (M.lookup dst) alts
-                ratio = 1.1
+                ratio = 1.5
 
 -- | Join two lists of pairs sorted by the first element.
 zjoin :: (Ord a) => [(a,b)] -> [(a,c)] -> [(a,b,c)]
