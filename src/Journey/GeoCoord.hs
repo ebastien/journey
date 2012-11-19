@@ -6,7 +6,7 @@ module Journey.GeoCoord (
     ) where
 
 import Control.Monad (join, guard)
-import Data.Maybe (fromJust, mapMaybe)
+import Data.Maybe (fromJust, mapMaybe, isJust)
 import Control.Arrow ((***))
 import Data.List (nub)
 import Data.Functor ((<$>))
@@ -47,35 +47,34 @@ fromDegree (lat, lon) = GeoCoord (radian lat, radian lon)
 data Reference = Reference { rCoord :: GeoCoord
                            , rCity  :: Port
                            , rCountry :: Country
-                           , rAirport :: Bool
                            } deriving (Show)
 
 -- | Port references.
 type PortReferences = PortMap Reference
 
--- | Load ports information from a file.
+-- | Load airports information from a file.
 loadReferences :: String -> IO PortReferences
-loadReferences f = return . M.fromList . map parse . drop 1 . T.lines =<< T.readFile f
-  where parse row = (port, reference)
-          where col = V.fromList $ T.split (=='^') row
-                port = fromJust . toPort . T.encodeUtf8 $ col V.! 0
-                lat = read . T.unpack $ col V.! 7
-                lon = read . T.unpack $ col V.! 8
-                country = fromJust . toCountry . T.encodeUtf8 $ col V.! 11
-                airport = 'Y' == T.head (col V.! 25)
-                city = fromJust . toPort . T.encodeUtf8 $ col V.! 31
-                reference = Reference (fromDegree (lat, lon)) city country airport
+loadReferences f = return . M.fromList . mapMaybe parse . drop 1 . T.lines =<< T.readFile f
+  where parse row = do
+          let col = V.fromList $ T.split (=='^') row
+              port = fromJust . toPort . T.encodeUtf8 $ col V.! 0
+              lat = read . T.unpack $ col V.! 7
+              lon = read . T.unpack $ col V.! 8
+              country = fromJust . toCountry . T.encodeUtf8 $ col V.! 11
+              city = fromJust . toPort . T.encodeUtf8 $ col V.! 31
+              category = col V.! 43
+          guard . isJust $ T.find (=='A') category
+          return (port, Reference (fromDegree (lat, lon)) city country)
 
 -- | Country from a port.
 portToCountry :: PortReferences -> Port -> Country
 portToCountry refs port = rCountry $ M.find port refs
 
--- | Filter for airports and convertion to city OnD.
+-- | Filter for city OnD.
 citiesOnDFilter :: PortReferences -> OnD -> Maybe OnD
 citiesOnDFilter refs (a,b) = do
   a' <- M.lookup a refs
   b' <- M.lookup b refs
-  guard $ rAirport a' && rAirport b'
   return (rCity a', rCity b')
 
 -- | City associations from port associations.
