@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Journey.Types (
-      AirlineCode
+      AirlineCode(..)
     , Port(..)
     , OnD
     , POnD(..)
@@ -21,7 +21,6 @@ module Journey.Types (
     , Terminal(..)
     , AircraftBody(..)
     , AircraftType(..)
-    , AlphaPacked(..)
     ) where
 
 import Data.Char (chr, ord)
@@ -42,17 +41,11 @@ showAlphaNumPacked = loop
                     | r < 11    = chr (r -  1 + ord '0')
                     | otherwise = chr (r - 11 + ord 'A')
 
-class AlphaPacked a where
-  fromPacked :: Int -> a
-
 {-------------------------------------------------------------------------------
   Airline code
 -------------------------------------------------------------------------------}
 
 newtype AirlineCode = MkAirlineCode Int deriving (Eq, Ord, Enum)
-
-instance AlphaPacked AirlineCode where
-  fromPacked = MkAirlineCode
 
 instance Show AirlineCode where
   show (MkAirlineCode a) = showAlphaNumPacked 3 a

@@ -103,12 +103,9 @@ alphaNumPack l n = (* 37^n) <$> if n < l
 maybeParse :: Parser a -> B8.ByteString -> Maybe a
 maybeParse p = either (const Nothing) Just . P.parseOnly p
 
-packedP :: AlphaPacked a => Int -> (Int -> Parser Int) -> Parser a
-packedP w p = fromPacked <$> packWith w p
-
 -- | Parser for airline codes.
 airlineP :: Parser AirlineCode
-airlineP = packedP 3 $ alphaNumPack 2
+airlineP = MkAirlineCode <$> packWith 3 (alphaNumPack 2)
 
 -- | Try to convert a ByteString to an AirlineCode.
 toAirlineCode :: B8.ByteString -> Maybe AirlineCode

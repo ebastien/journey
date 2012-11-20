@@ -58,7 +58,7 @@ toAircraftBody = maybeParse aircraftBodyP
 
 -- | Parser for MCT carrier codes.
 carrierP :: Parser AirlineCode
-carrierP = fromPacked <$> alphaNumPackBounded 2 3
+carrierP = MkAirlineCode <$> alphaNumPackBounded 2 3 <?> "Carrier"
 
 aircraftClassP :: Parser AircraftClass
 aircraftClassP = Left <$> aircraftBodyP <|> Right <$> aircraftTypeP
