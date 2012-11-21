@@ -15,6 +15,9 @@ module Journey.SegmentPeriod (
   , spDepartureArea
   , spArrivalArea
   , spPath
+  , spStops
+  , cxStops
+  , cxElapsedTime
   ) where
 
 import Data.Foldable (foldMap)
@@ -113,13 +116,8 @@ spArrivalDateVariation s = lpArrivalDateVariation ( slLeg $ last s )
                          - lpDepartureDateVariation ( slLeg $ head s )
 
 spElapsedTime :: SegmentPeriod -> TimeDuration
-spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail legs)
-  where legs = map slLeg s
-        cnx (a,b) = lpElapsedTime b
-                  + lpDepartureTime b - lpArrivalTime a
-                  + ( secondsToDiffTime . fromIntegral
-                    $ ( lpDepartureDateVariation b
-                      - lpArrivalDateVariation a ) * 86400 )
+spElapsedTime s = spArrivalTime s - spDepartureTime s + v
+  where v = secondsToDiffTime $ fromIntegral (spArrivalDateVariation s) * 86400
 
 spRestrictService :: SegmentPeriod -> RestrictService
 spRestrictService s = if n <= mkLegSequence 11
@@ -147,3 +145,22 @@ spArrivalArea = lpArrivalArea . slLeg . last
 spPath :: SegmentPeriod -> Path
 spPath s = board : map (lpOff . slLeg) s
   where board = lpBoard . slLeg $ head s
+
+-- | Number of stops for a segment.
+spStops :: SegmentPeriod -> Int
+spStops s | not $ null s = length s - 1
+
+-- | Number of stops for a connection.
+cxStops :: [SegmentPeriod] -> Int
+cxStops c | not $ null c = sum (map spStops c) + length c - 1
+
+-- | List of carriers for a connection.
+cxCarriers :: [SegmentPeriod] -> [AirlineCode]
+cxCarriers = map $ fAirline . spFlight
+
+-- | Elapsed time over a connection.
+cxElapsedTime :: [SegmentPeriod] -> TimeDuration
+cxElapsedTime s = (spElapsedTime $ head s) + (sum . map cnx . zip s $ tail s)
+  where cnx (a,b) = spElapsedTime b + case spDepartureTime b - spArrivalTime a of
+                      d | d < 0 -> d + secondsToDiffTime (fromIntegral 86400)
+                      d         -> d
