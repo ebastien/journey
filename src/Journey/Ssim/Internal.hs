@@ -120,7 +120,8 @@ legPeriodP = do
   transit <- transitFlowP   <?> "leg MCT status"
   void $ P.take 6
   iviH <- decimalP 1 <|> (P.char ' ' *> pure 0) <?> "Leg variation (high)"
-  void $ P.take (3+3+3+9+1+1+1)
+  void $ P.take (3+3+3+9+1+1)
+  operating <- P.char ' ' *> pure True <|> P.anyChar *> pure False
   traffic <- legRestrictionsP <?> "Leg traffic restriction"
   void $ P.take (11+20)
   ddvar <- dateVariationP   <?> "Leg departure date variation"
@@ -136,7 +137,7 @@ legPeriodP = do
                      bpoint opoint
                      dtime atime etime ddvar advar
                      srv freq dterm aterm
-                     aircraft transit traffic
+                     aircraft transit traffic operating
 
 -- | Parser for traffic restriction at segment data level.
 dataRestrictionP :: Parser Restriction

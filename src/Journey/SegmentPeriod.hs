@@ -17,6 +17,7 @@ module Journey.SegmentPeriod (
   , spPath
   , spStops
   , cxStops
+  , cxCarriers
   , cxElapsedTime
   ) where
 
@@ -150,6 +151,9 @@ spPath s = board : map (lpOff . slLeg) s
 spStops :: SegmentPeriod -> Int
 spStops s | not $ null s = length s - 1
 
+spOperating :: SegmentPeriod -> Bool
+spOperating = undefined
+
 -- | Number of stops for a connection.
 cxStops :: [SegmentPeriod] -> Int
 cxStops c | not $ null c = sum (map spStops c) + length c - 1
@@ -164,3 +168,6 @@ cxElapsedTime s = (spElapsedTime $ head s) + (sum . map cnx . zip s $ tail s)
   where cnx (a,b) = spElapsedTime b + case spDepartureTime b - spArrivalTime a of
                       d | d < 0 -> d + secondsToDiffTime (fromIntegral 86400)
                       d         -> d
+
+cxOperating :: [SegmentPeriod] -> Bool
+cxOperating = undefined

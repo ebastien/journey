@@ -26,19 +26,26 @@ tests = [
 noAssertion :: a -> Assertion
 noAssertion = const $ return ()
 
-l1 = ( "Leg"
+l1 = ( "Leg operating"
      , "3 AA    12501J07OCT1207OCT12      7 JFK09000900-04008 LAX12051205-07004 762FAJRDIYBHKMVWNSQLGO      XX                 DDS                                       O                              00000195\n"
      , do l <- legPeriodP
           let f = lpFlight l
           return $ do
-            fAirline f @?= fromJust (toAirlineCode "AA ")
+            fAirline f @?= read "AA "
             fNumber f  @?= 1
+            lpOperating l @?= True
      )
 
 l2 = ( "Leg with traffic restriction"
      , "3 AA 76750101J28JUL1228JUL12     6  SCL10151015-0400  CPO11501150-0400  320YBHKMVWNSQLGO            XX                 DDS      LU                  ZAYY         M                              00987059\n"
      , do l <- legPeriodP
           return $ lpRestrictionAt (mkLegSequence 1) l @?= Just NoLocal
+     )
+
+l3 = ( "Leg with codeshare"
+     , "3 9W 71090901J23OCT1326OCT13  3456  BOM06300630+05301AIDR07500750+0530  73GYMTUNLQSKHVOW            XX                 DD       S2                  Z            M                              00041791\n"
+     , do l <- legPeriodP
+          return $ lpOperating l @?= False
      )
 
 s1 = ( "Segment"
@@ -53,7 +60,7 @@ s2 = ( "Segment with traffic restriction data element"
           return $ dElement s @?= MkDEI17x (mkRestrictPax NoLocal)
      )
 
-fixtures = [ l1, l2, s1, s2 ]
+fixtures = [ l1, l2, l3, s1, s2 ]
 
 testParse :: P.Parser Assertion -> B.ByteString -> Assertion
 testParse p b = case P.parseOnly p b of

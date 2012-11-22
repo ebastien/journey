@@ -48,6 +48,7 @@ data LegPeriod = LegPeriod { lpFlight :: !Flight
                            , lpAircraftType :: !AircraftType
                            , lpTransitFlow :: !TransitFlow
                            , lpRestrictions :: !LegRestrictions
+                           , lpOperating :: !Bool
                            } deriving (Show)
 
 lpRestrictionAt :: LegSequence -> LegPeriod -> LegRestriction
