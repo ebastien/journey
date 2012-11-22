@@ -24,17 +24,11 @@ import Journey.SegmentDate
 import Journey.SegmentPeriod
 import Journey.LegPeriod
 import Journey.Route
-import Journey.Connection
-import Journey.MCT.Rule
 
 type PathBuilder = Path -> (Builder -> Builder) -> Builder
 
-buildPathPeriod :: (OnD -> [SegmentPeriod])
-                -> (Port -> Country)
-                -> (Rule -> Maybe MCT)
-                -> PathBuilder
-buildPathPeriod segs geos regn p b = foldMap (b . buildCnxPeriod)
-                                   $ connectionsPeriod segs geos regn p
+buildPathPeriod :: (Path -> [[SegmentPeriod]]) -> PathBuilder
+buildPathPeriod cnx pth bld = foldMap (bld . buildCnxPeriod) $ cnx pth
 
 -- | Build a representation of all itineraries.
 buildAll :: (MetricSpace e) => [PortCoverages e]
@@ -43,7 +37,7 @@ buildAll :: (MetricSpace e) => [PortCoverages e]
 buildAll covs bld = foldMap (buildForOnD covs bld) onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
--- | Build a representation of all itineraries.
+-- | Build a representation of all itineraries in chunks.
 buildSplit :: (MetricSpace e) => [PortCoverages e]
                              -> PathBuilder
                              -> Int
@@ -51,6 +45,7 @@ buildSplit :: (MetricSpace e) => [PortCoverages e]
 buildSplit covs bld n = foldMap (buildForOnD covs bld) <$> chunk n onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
+-- | Split a list into chunks.
 chunk :: Int -> [a] -> [[a]]
 chunk _ [] = []
 chunk n xs = as : chunk n bs where (as,bs) = splitAt n xs
@@ -93,17 +88,22 @@ buildPath = mconcat . intersperse (singleton '-') . map buildPort
 buildPort :: Port -> Builder
 buildPort = fromString . show
 
--- | Build a representation of a connection.
+-- | Build a representation of a connection of segment-dates.
 buildCnxDate :: [SegmentDate] -> Builder
 buildCnxDate = buildCnx buildSegmentDate
 
+-- | Build a representation of a connection of segment-periods.
 buildCnxPeriod :: [SegmentPeriod] -> Builder
-buildCnxPeriod = buildCnx buildSegmentPeriod
+buildCnxPeriod s = mconcat . intersperse (singleton '\t')
+                 $ [ buildCnx buildSegmentPeriod s
+                   , buildStops $ cxStops s
+                   , buildCarriers $ cxCarriers s
+                   ]
 
 buildCnx :: (a -> Builder) -> [a] -> Builder
 buildCnx b = mconcat . intersperse (singleton ';') . map b
 
--- | Build a representation of a segment.
+-- | Build a representation of a segment-date.
 buildSegmentDate :: SegmentDate -> Builder
 buildSegmentDate s = mconcat . intersperse (singleton ' ')
                    $ [ buildFlight . lpFlight . slLeg . head $ sdSegment s
@@ -115,6 +115,7 @@ buildSegmentDate s = mconcat . intersperse (singleton ' ')
                      , buildTime $ sdArrivalTime s
                      ]
 
+-- | Build a representation of a segment-period.
 buildSegmentPeriod :: SegmentPeriod -> Builder
 buildSegmentPeriod s = mconcat . intersperse (singleton ' ')
                      $ [ buildFlight . lpFlight . slLeg $ head s
@@ -150,3 +151,12 @@ buildTime :: ScheduleTime -> Builder
 buildTime t = build "{}:{}" [pad h, pad m]
   where TimeOfDay h m _ = timeToTimeOfDay t
         pad = left 2 '0'
+
+buildStops :: Int -> Builder
+buildStops = left 2 ' '
+
+buildCarriers :: [AirlineCode] -> Builder
+buildCarriers = mconcat . intersperse (singleton '-') . map buildCarrier
+
+buildCarrier :: AirlineCode -> Builder
+buildCarrier = fromString . show

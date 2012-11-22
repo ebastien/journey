@@ -22,6 +22,7 @@ import Journey.Builder (buildForOnD, buildPathPeriod, buildAllPaths)
 import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Types (OnD)
 import Journey.Parsers (toPort)
+import Journey.Connection (connectionsPeriod)
 
 readOnDs :: String -> IO [OnD]
 readOnDs f = return . map parse . T.lines =<< T.readFile f
@@ -41,7 +42,8 @@ main = do
       segs = fromOnD segdb
       geos = portToCountry refs
       regn = pruneLookup mctdb
-      bldr = buildForOnD covs $ buildPathPeriod segs geos regn
+      cntr = connectionsPeriod segs geos regn
+      bldr = buildForOnD covs $ buildPathPeriod cntr
 
   -- LT.putStr . toLazyText $ buildAllPaths covs
   LT.putStr . toLazyText $ foldMap bldr onds

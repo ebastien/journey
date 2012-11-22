@@ -21,6 +21,7 @@ import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry
 import Journey.Builder (buildSplit, buildPathPeriod)
 import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Parsers (toPort)
+import Journey.Connection (connectionsPeriod)
 
 buildInFile :: FilePath -> Builder -> IO ()
 buildInFile f = T.writeFile f . toLazyText
@@ -42,7 +43,8 @@ main = do
       segs = fromOnD segdb
       geos = portToCountry refs
       regn = pruneLookup mctdb
-      bldr = buildPathPeriod segs geos regn
+      cntr = connectionsPeriod segs geos regn
+      bldr = buildPathPeriod cntr
 
   thds <- getNumCapabilities
 

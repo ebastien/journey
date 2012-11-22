@@ -17,6 +17,7 @@ import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
 import Journey.Builder (buildAll, buildPathPeriod)
 import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
+import Journey.Connection (connectionsPeriod)
 
 main :: IO ()
 main = do
@@ -30,5 +31,6 @@ main = do
       segs = fromOnD segdb
       geos = portToCountry refs
       regn = pruneLookup mctdb
+      cntr = connectionsPeriod segs geos regn
 
-  T.putStr . toLazyText . buildAll covs $ buildPathPeriod segs geos regn
+  T.putStr . toLazyText . buildAll covs $ buildPathPeriod cntr
