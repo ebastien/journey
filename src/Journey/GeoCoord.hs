@@ -99,6 +99,6 @@ adjacency refs = M.group . mapMaybe edge . filter valid
           dist <- case mapMaybe (pathLength refs) paths of
                     [] -> Nothing
                     ps -> Just $ minimum ps
-          co <- rCoord <$> M.lookup o refs
-          cd <- rCoord <$> M.lookup d refs
+          co <- rCoord <$> M.lookup o refs -- This is wrong as we are mixing
+          cd <- rCoord <$> M.lookup d refs -- city and airport codes
           return (d, Edge o co cd dist)
