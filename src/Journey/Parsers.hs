@@ -111,6 +111,10 @@ airlineP = MkAirlineCode <$> packWith 3 (alphaNumPack 2)
 toAirlineCode :: B8.ByteString -> Maybe AirlineCode
 toAirlineCode = maybeParse airlineP
 
+instance Read AirlineCode where
+  readsPrec _ s = fromMaybe []
+                $ (\x -> [(x, "")]) <$> toAirlineCode (B8.pack s)
+
 -- | Parser for ports.
 portP :: Parser Port
 portP = MkPort <$> packWith 3 alphaPack <?> "Port"
