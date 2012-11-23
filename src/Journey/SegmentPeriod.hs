@@ -117,8 +117,13 @@ spArrivalDateVariation s = lpArrivalDateVariation ( slLeg $ last s )
                          - lpDepartureDateVariation ( slLeg $ head s )
 
 spElapsedTime :: SegmentPeriod -> TimeDuration
-spElapsedTime s = spArrivalTime s - spDepartureTime s + v
-  where v = secondsToDiffTime $ fromIntegral (spArrivalDateVariation s) * 86400
+spElapsedTime s = (lpElapsedTime $ head legs) + (sum . map cnx . zip legs $ tail legs)
+  where legs = map slLeg s
+        cnx (a,b) = lpElapsedTime b
+                  + lpDepartureTime b - lpArrivalTime a
+                  + ( secondsToDiffTime . fromIntegral
+                    $ ( lpDepartureDateVariation b
+                      - lpArrivalDateVariation a ) * 86400 )
 
 spRestrictService :: SegmentPeriod -> RestrictService
 spRestrictService s = if n <= mkLegSequence 11
