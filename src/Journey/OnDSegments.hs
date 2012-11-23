@@ -6,6 +6,7 @@ module Journey.OnDSegments (
     , fromOnD
     ) where
 
+import Data.List (nub)
 import qualified Journey.EnumMap as M
 
 import Journey.Types
@@ -26,10 +27,10 @@ fromSegments = M.group . map packOnd
 toOnDs :: OnDSegments -> [OnD]
 toOnDs = map unpackOnD . M.keys
 
--- | List of OnDs and paths.
+-- | List of OnDs and unique paths.
 toOnDPaths :: OnDSegments -> [(OnD, [Path])]
 toOnDPaths = map p . M.toList
-  where p (ond, segs) = (unpackOnD ond, map spPath segs)
+  where p (ond, segs) = (unpackOnD ond, nub $ map spPath segs)
 
 -- | Find segments matching a given OnD.
 fromOnD :: OnDSegments -> OnD -> [SegmentPeriod]

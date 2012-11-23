@@ -8,7 +8,7 @@ module Journey.GeoCoord (
 import Control.Monad (join, guard, foldM)
 import Data.Maybe (fromJust, mapMaybe, isJust)
 import Control.Arrow ((***))
-import Data.List (groupBy)
+import Data.List (groupBy, minimumBy)
 import Data.Function (on)
 import Data.Functor ((<$>))
 import qualified Data.Text as T
@@ -69,36 +69,40 @@ loadReferences f = return . M.fromList . mapMaybe parse . drop 1 . T.lines =<< T
 
 -- | Country from a port.
 portToCountry :: PortReferences -> Port -> Country
-portToCountry refs port = rCountry $ M.find port refs
+portToCountry pdb port = rCountry $ M.find port pdb
 
 -- | Filter for city OnD.
 citiesOnDFilter :: PortReferences -> OnD -> Maybe OnD
-citiesOnDFilter refs (a,b) = do
-  a' <- M.lookup a refs
-  b' <- M.lookup b refs
-  return (rCity a', rCity b')
+citiesOnDFilter pdb (a,b) = do
+  a' <- rCity <$> M.lookup a pdb
+  b' <- rCity <$> M.lookup b pdb
+  return (a', b')
 
 -- | City associations from port associations.
 assocToCities :: PortReferences -> [(OnD, a)] -> [(OnD, a)]
-assocToCities refs = mapMaybe assoc
-  where assoc (ond, x) = flip (,) x <$> citiesOnDFilter refs ond
+assocToCities pdb = mapMaybe assoc
+  where assoc (ond, x) = flip (,) x <$> citiesOnDFilter pdb ond
+
+-- | Lookup points of reference in a path.
+pathToRefs :: PortReferences -> Path -> Maybe [Reference]
+pathToRefs pdb = mapM (flip M.lookup pdb)
 
 -- | Geographic path length.
-pathLength :: PortReferences -> Path -> Maybe Distance
-pathLength refs p = foldM f 0 $ zip p (tail p)
-  where f l (o,d) = do
-          co <- rCoord <$> M.lookup o refs
-          cd <- rCoord <$> M.lookup d refs
-          return $ l + distance co cd
+pathLength :: [Reference] -> Distance
+pathLength = sum . map dist . steps
+  where steps p = zip p (tail p)
+        dist (a,b) = distance (rCoord a) (rCoord b)
 
 -- | Ports adjacency in geographic coordinates.
 adjacency :: PortReferences -> [(OnD, [Path])] -> PortAdjacencies GeoCoord
-adjacency refs = M.group . mapMaybe edge . filter valid
-  where valid ((o,d), _) = o /= d
-        edge ((o,d), paths) = do
-          dist <- case mapMaybe (pathLength refs) paths of
+adjacency pdb = M.group . mapMaybe edge . filter valid
+  where valid ((a,b), _) = a /= b
+        edge ((a,b), paths) = do
+          refs <- case mapMaybe (pathToRefs pdb) paths of
                     [] -> Nothing
-                    ps -> Just $ minimum ps
-          co <- rCoord <$> M.lookup o refs -- This is wrong as we are mixing
-          cd <- rCoord <$> M.lookup d refs -- city and airport codes
-          return (d, Edge o co cd dist)
+                    rs -> Just rs
+          let (best, dist) = minimumBy (compare `on` snd)
+                           $ map (\rs -> (rs, pathLength rs)) refs
+              co = rCoord $ head best
+              cd = rCoord $ last best
+          return (b, Edge a co cd dist)
