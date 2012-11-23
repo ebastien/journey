@@ -98,6 +98,7 @@ buildCnxPeriod s = mconcat . intersperse (singleton '\t')
                  $ [ buildCnx buildSegmentPeriod s
                    , buildStops $ cxStops s
                    , buildCarriers $ cxCarriers s
+                   , buildElapsed $ cxElapsedTime s
                    ]
 
 buildCnx :: (a -> Builder) -> [a] -> Builder
@@ -160,3 +161,6 @@ buildCarriers = mconcat . intersperse (singleton '-') . map buildCarrier
 
 buildCarrier :: AirlineCode -> Builder
 buildCarrier = fromString . show
+
+buildElapsed :: TimeDuration -> Builder
+buildElapsed t = left 5 ' ' (truncate t :: Int)
