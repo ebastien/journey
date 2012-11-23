@@ -68,9 +68,8 @@ paddedDecimalP n = do
 
 -- | Parser for fixed length decimal numbers.
 decimalP :: Int -> Parser Int
-decimalP n = do
-  i <- readDecimal <$> P.take n
-  fromMaybe (fail "Decimal parsing failed") $ (return . fst) <$> i
+decimalP n = maybe (fail "Decimal parsing failed") (return . fst)
+           . readDecimal =<< P.take n
 
 -- | Parser generator for fixed-length strings packed as numbers.
 packWith :: Num a => Int -> (Int -> Parser a) -> Parser a
@@ -181,7 +180,7 @@ timeVariationP = (plus <|> minus) <*> time
         time = do
           h <- decimalP 2; m <- decimalP 2
           if h <= 23 && m <= 59
-            then return . secondsToDiffTime . fromIntegral $ 60 * h + m
+            then return . secondsToDiffTime . fromIntegral $ 3600 * h + 60 * m
             else fail "Time variation parsing failed"
 
 -- | Parser for date variations.
