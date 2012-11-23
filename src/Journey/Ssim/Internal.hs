@@ -3,7 +3,9 @@
 module Journey.Ssim.Internal (
     readSsimFile
   , ssimRegularSegments
+  , flightSegments
   , legPeriodP
+  , legGroupP
   , segmentP
   , SegmentData(..)
   ) where
