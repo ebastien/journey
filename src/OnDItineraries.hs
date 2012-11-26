@@ -18,7 +18,7 @@ import Journey.MCT.Attributes (attributes)
 import Journey.MCT.Tree (fromList, pruneLookup)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
-import Journey.Builder (buildForOnD, buildPathPeriod, buildAllPaths)
+import Journey.Builder (buildForOnD, buildAllPaths)
 import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Types (OnD)
 import Journey.Parsers (toPort)
@@ -43,7 +43,7 @@ main = do
       geos = portToCountry refs
       regn = pruneLookup mctdb
       cntr = connectionsPeriod segs geos regn
-      bldr = buildForOnD covs $ buildPathPeriod cntr
+      bldr = buildForOnD covs cntr
 
   -- LT.putStr . toLazyText $ buildAllPaths covs
   LT.putStr . toLazyText $ foldMap bldr onds

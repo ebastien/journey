@@ -18,7 +18,7 @@ import Journey.MCT.Attributes (attributes)
 import Journey.MCT.Tree (fromList, pruneLookup)
 import Journey.Route (coverages)
 import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
-import Journey.Builder (buildSplit, buildPathPeriod)
+import Journey.Builder (buildSplit)
 import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Parsers (toPort)
 import Journey.Connection (connectionsPeriod)
@@ -44,8 +44,7 @@ main = do
       geos = portToCountry refs
       regn = pruneLookup mctdb
       cntr = connectionsPeriod segs geos regn
-      bldr = buildPathPeriod cntr
 
   thds <- getNumCapabilities
 
-  parallelBuild thds $ buildSplit covs bldr 10000
+  parallelBuild thds $ buildSplit covs cntr 10000

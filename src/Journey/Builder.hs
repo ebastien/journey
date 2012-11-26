@@ -3,7 +3,6 @@
 module Journey.Builder (
     buildAll
   , buildSplit
-  , buildPathPeriod
   , buildForOnD
   , buildAllPaths
   ) where
@@ -26,24 +25,21 @@ import Journey.SegmentPeriod
 import Journey.LegPeriod
 import Journey.Route
 
-type PathBuilder = Path -> (Builder -> Builder) -> Builder
-
-buildPathPeriod :: (Path -> [[SegmentPeriod]]) -> PathBuilder
-buildPathPeriod cnx pth bld = foldMap (bld . buildCnxPeriod) $ cnx pth
+type ConnectionBuilder = Path -> [[SegmentPeriod]]
 
 -- | Build a representation of all itineraries.
 buildAll :: (MetricSpace e) => [PortCoverages e]
-                            -> PathBuilder
+                            -> ConnectionBuilder
                             -> Builder
-buildAll covs bld = foldMap (buildForOnD covs bld) onds
+buildAll covs cnx = foldMap (buildForOnD covs cnx) onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Build a representation of all itineraries in chunks.
 buildSplit :: (MetricSpace e) => [PortCoverages e]
-                             -> PathBuilder
+                             -> ConnectionBuilder
                              -> Int
                              -> [Builder]
-buildSplit covs bld n = foldMap (buildForOnD covs bld) <$> chunk n onds
+buildSplit covs cnx n = foldMap (buildForOnD covs cnx) <$> chunk n onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Split a list into chunks.
@@ -53,12 +49,12 @@ chunk n xs = as : chunk n bs where (as,bs) = splitAt n xs
 
 -- | Build a representation of itineraties for a single OnD.
 buildForOnD :: (MetricSpace e) => [PortCoverages e]
-                               -> PathBuilder
+                               -> ConnectionBuilder
                                -> OnD
                                -> Builder
-buildForOnD covs bld ond = foldMap f covs
+buildForOnD covs cnx ond = foldMap f covs
   where f cov = case ondPaths ond cov of
-                  Just paths -> foldMap (buildForPath ond bld) paths
+                  Just paths -> foldMap (buildForPath ond cnx) paths
                   Nothing    -> mempty
 
 buildAllPaths :: (MetricSpace e) => [PortCoverages e]
@@ -71,8 +67,8 @@ buildAllPaths covs = foldMap f onds
         onds = map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Build a representation of itineraties for a single path.
-buildForPath :: OnD -> PathBuilder -> Path -> Builder
-buildForPath ond bld path = bld path fmt
+buildForPath :: OnD -> ConnectionBuilder -> Path -> Builder
+buildForPath ond cnx path = foldMap (fmt . buildCnxPeriod) $ cnx path
   where fmt b = mconcat [ buildOnD ond   , singleton '\t'
                         , buildPath path , singleton '\t'
                         , b              , singleton '\n' ]
@@ -171,3 +167,6 @@ buildOperating :: Bool -> Builder
 buildOperating o = TB.build $ case o of
                      True  -> 'O'
                      False -> 'M'
+
+buildCountry :: Country -> Builder
+buildCountry = fromString . show
