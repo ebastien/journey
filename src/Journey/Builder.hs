@@ -14,6 +14,7 @@ import Data.Foldable (foldMap)
 import Data.Functor ((<$>))
 import Data.Text.Lazy.Builder (Builder, fromString, singleton)
 import Data.Text.Format (build, left, Shown(..))
+import qualified Data.Text.Buildable as TB
 import Data.Time.LocalTime (TimeOfDay(..), timeToTimeOfDay)
 import Data.Time.Calendar (Day, toGregorian)
 
@@ -126,6 +127,7 @@ buildSegmentPeriod s = mconcat . intersperse (singleton ' ')
                        , buildTime $ spDepartureTime s
                        , buildTime $ spArrivalTime s
                        , buildDateVariation $ spArrivalDateVariation s
+                       , buildOperating $ spOperating s
                        ]
 
 -- | Build a representation of a flight.
@@ -164,3 +166,8 @@ buildCarrier = fromString . show
 
 buildElapsed :: TimeDuration -> Builder
 buildElapsed t = left 5 ' ' (truncate t :: Int)
+
+buildOperating :: Bool -> Builder
+buildOperating o = TB.build $ case o of
+                     True  -> 'O'
+                     False -> 'M'
