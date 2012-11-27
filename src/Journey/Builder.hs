@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Journey.Builder (
-    buildAll
+    buildForAll
+  , buildForSome
   , buildSplit
   , buildForOnD
+  , buildForPath
   , buildAllPaths
   ) where
 
@@ -25,21 +27,26 @@ import Journey.SegmentPeriod
 import Journey.LegPeriod
 import Journey.Route
 
-type ConnectionBuilder = Path -> [[SegmentPeriod]]
-
--- | Build a representation of all itineraries.
-buildAll :: (MetricSpace e) => [PortCoverages e]
-                            -> ConnectionBuilder
-                            -> Builder
-buildAll covs cnx = foldMap (buildForOnD covs cnx) onds
+-- | Build a representation of itineraries for all OnDs.
+buildForAll :: (MetricSpace e) => [PortCoverages e]
+                              -> (OnD -> Builder)
+                              -> Builder
+buildForAll covs bld = foldMap bld onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
+-- | Build a representation of itineraries for some OnDs.
+buildForSome :: (MetricSpace e) => [PortCoverages e]
+                                -> [OnD]
+                                -> (OnD -> Builder)
+                                -> Builder
+buildForSome covs onds bld = foldMap bld onds
+
 -- | Build a representation of all itineraries in chunks.
-buildSplit :: (MetricSpace e) => [PortCoverages e]
-                             -> ConnectionBuilder
-                             -> Int
+buildSplit :: (MetricSpace e) => Int
+                             -> [PortCoverages e]
+                             -> (OnD -> Builder)
                              -> [Builder]
-buildSplit covs cnx n = foldMap (buildForOnD covs cnx) <$> chunk n onds
+buildSplit n covs bld = foldMap bld <$> chunk n onds
   where onds = map head . group . sort $ concatMap coveredOnDs covs
 
 -- | Split a list into chunks.
@@ -49,29 +56,23 @@ chunk n xs = as : chunk n bs where (as,bs) = splitAt n xs
 
 -- | Build a representation of itineraties for a single OnD.
 buildForOnD :: (MetricSpace e) => [PortCoverages e]
-                               -> ConnectionBuilder
                                -> OnD
+                               -> (Path -> Builder)
                                -> Builder
-buildForOnD covs cnx ond = foldMap f covs
+buildForOnD covs ond bld = foldMap f covs
   where f cov = case ondPaths ond cov of
-                  Just paths -> foldMap (buildForPath ond cnx) paths
+                  Just paths -> foldMap bld paths
                   Nothing    -> mempty
 
-buildAllPaths :: (MetricSpace e) => [PortCoverages e]
-                                 -> Builder
-buildAllPaths covs = foldMap f onds
-  where f ond = foldMap (g ond) covs
-        g ond cov = case ondPaths ond cov of
-          Just ps -> foldMap (\p -> buildPath p `mappend` singleton '\n') ps
-          Nothing -> mempty
-        onds = map head . group . sort $ concatMap coveredOnDs covs
-
 -- | Build a representation of itineraties for a single path.
-buildForPath :: OnD -> ConnectionBuilder -> Path -> Builder
-buildForPath ond cnx path = foldMap (fmt . buildCnxPeriod) $ cnx path
-  where fmt b = mconcat [ buildOnD ond   , singleton '\t'
-                        , buildPath path , singleton '\t'
-                        , b              , singleton '\n' ]
+buildForPath :: OnD
+             -> Path
+             -> [[SegmentPeriod]]
+             -> Builder
+buildForPath ond path cnxs = foldMap f cnxs
+  where f cnx = mconcat [ buildOnD ond      , singleton '\t'
+                        , buildPath path    , singleton '\t'
+                        , buildCnxPeriod cnx, singleton '\n' ]
 
 -- | Build a representation of an OnD.
 buildOnD :: OnD -> Builder
@@ -170,3 +171,12 @@ buildOperating o = TB.build $ case o of
 
 buildCountry :: Country -> Builder
 buildCountry = fromString . show
+
+buildAllPaths :: (MetricSpace e) => [PortCoverages e]
+                                 -> Builder
+buildAllPaths covs = foldMap f onds
+  where f ond = foldMap (g ond) covs
+        g ond cov = case ondPaths ond cov of
+          Just ps -> foldMap (\p -> buildPath p `mappend` singleton '\n') ps
+          Nothing -> mempty
+        onds = map head . group . sort $ concatMap coveredOnDs covs
