@@ -1,7 +1,9 @@
 module Journey.GeoCoord (
       loadReferences
+    , mkAirportRefs
+    , mkCityRefs
     , adjacency
-    , portToCountry
+    , porToCountry
     , assocToCities
     ) where
 
@@ -44,32 +46,53 @@ fromDegree :: (Double, Double) -> GeoCoord
 fromDegree (lat, lon) = GeoCoord (radian lat, radian lon)
   where radian d = d * pi / 180.0
 
+-- | Category of point of reference.
+data PorCategory = MkPorCategory { isAirportRef :: Bool
+                                 , isCityRef :: Bool
+                                 } deriving (Show)
+
 -- | Geographic reference data.
-data Reference = Reference { rCoord :: GeoCoord
+data Reference = Reference { rPOR :: Port
+                           , rCoord :: GeoCoord
                            , rCity  :: Port
                            , rCountry :: Country
+                           , rCategory :: PorCategory
                            } deriving (Show)
 
 -- | Port references.
 type PortReferences = PortMap Reference
 
 -- | Load airports information from a file.
-loadReferences :: String -> IO PortReferences
-loadReferences f = return . M.fromList . mapMaybe parse . drop 1 . T.lines =<< T.readFile f
+loadReferences :: String -> IO [Reference]
+loadReferences f = return . mapMaybe parse . drop 1 . T.lines =<< T.readFile f
   where parse row = do
           let col = V.fromList $ T.split (=='^') row
-              port = fromJust . toPort . T.encodeUtf8 $ col V.! 0
+              por = fromJust . toPort . T.encodeUtf8 $ col V.! 0
               lat = read . T.unpack $ col V.! 7
               lon = read . T.unpack $ col V.! 8
               country = fromJust . toCountry . T.encodeUtf8 $ col V.! 11
               city = fromJust . toPort . T.encodeUtf8 $ col V.! 31
-              category = col V.! 34
-          guard . isJust $ T.find (=='A') category
-          return (port, Reference (fromDegree (lat, lon)) city country)
+              category = mkCat $ col V.! 34
+          return $ Reference por (fromDegree (lat, lon)) city country category
 
--- | Country from a port.
-portToCountry :: PortReferences -> Port -> Country
-portToCountry pdb port = rCountry $ M.find port pdb
+        mkCat t = MkPorCategory (isJust $ T.find (=='A') t)
+                                (isJust $ T.find (=='C') t)
+
+-- | Make a lookup structure for airports.
+mkAirportRefs :: [Reference] -> PortReferences
+mkAirportRefs = M.fromList
+              . map (\r -> (rPOR r, r))
+              . filter (isAirportRef . rCategory)
+
+-- | Make a lookup structure for cities.
+mkCityRefs :: [Reference] -> PortReferences
+mkCityRefs = M.fromList
+           . map (\r -> (rCity r, r))
+           . filter (isCityRef . rCategory)
+
+-- | Country from a point of reference.
+porToCountry :: PortReferences -> Port -> Country
+porToCountry pdb por = rCountry $ M.find por pdb
 
 -- | Filter for city OnD.
 citiesOnDFilter :: PortReferences -> OnD -> Maybe OnD
@@ -85,7 +108,7 @@ assocToCities pdb = mapMaybe assoc
 
 -- | Lookup points of reference in a path.
 pathToRefs :: PortReferences -> Path -> Maybe [Reference]
-pathToRefs pdb = mapM (flip M.lookup pdb)
+pathToRefs pdb = mapM $ flip M.lookup pdb
 
 -- | Geographic path length.
 pathLength :: [Reference] -> Distance

@@ -17,7 +17,8 @@ import Journey.MCT.OAGParser (readMCTFile)
 import Journey.MCT.Attributes (attributes)
 import Journey.MCT.Tree (fromList, pruneLookup)
 import Journey.Route (coverages)
-import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
+import Journey.GeoCoord (loadReferences, assocToCities, adjacency, porToCountry,
+                         mkAirportRefs, mkCityRefs)
 import Journey.Builder (buildSplit, buildForOnD, buildForPath)
 import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Parsers (toPort)
@@ -34,14 +35,18 @@ parallelBuild n bs = withPool n $ \p -> parallel_ p chunks
 main :: IO ()
 main = do
   [refsFile, mctFile, ssimFile] <- getArgs
+
   refs <- loadReferences refsFile
+  let airports = mkAirportRefs refs
+      cities = mkCityRefs refs
+  
   mctdb <- fromList attributes <$> readMCTFile mctFile
-  segdb <- fromSegments . assocToCities refs . ssimRegularSegments
+  segdb <- fromSegments . assocToCities airports . ssimRegularSegments
        <$> readSsimFile ssimFile
 
-  let covs = take 3 . coverages . adjacency refs $ toOnDPaths segdb
+  let covs = take 3 . coverages . adjacency airports $ toOnDPaths segdb
       segs = fromOnD segdb
-      geos = portToCountry refs
+      geos = porToCountry airports
       regn = pruneLookup mctdb
       cntr = connectionsPeriod segs geos regn
 
@@ -49,4 +54,4 @@ main = do
 
   parallelBuild thds $ buildSplit 10000 covs (\o ->
                         buildForOnD covs o (\p ->
-                          buildForPath o p (cntr p)))
+                          buildForPath o p (cntr p) geos))

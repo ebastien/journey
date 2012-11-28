@@ -68,11 +68,24 @@ buildForOnD covs ond bld = foldMap f covs
 buildForPath :: OnD
              -> Path
              -> [[SegmentPeriod]]
+             -> (Port -> Country)
              -> Builder
-buildForPath ond path cnxs = foldMap f cnxs
-  where f cnx = mconcat [ buildOnD ond      , singleton '\t'
-                        , buildPath path    , singleton '\t'
-                        , buildCnxPeriod cnx, singleton '\n' ]
+buildForPath ond path cnxs geos = foldMap (row . fmt) cnxs
+  where fmt cnx = mconcat . intersperse (singleton '\t')
+                $ [ buildOnD ond
+                  , country $ fst ond
+                  , country $ snd ond
+                  , buildPath path
+                  , buildCnx buildSegmentPeriod cnx
+                  , buildStops $ cxStops cnx
+                  , buildCarriers $ cxCarriers cnx
+                  , buildElapsed $ cxElapsedTime cnx
+                  ]
+        country = buildCountry . geos
+        row = flip mappend $ singleton '\n'
+
+buildCnx :: (a -> Builder) -> [a] -> Builder
+buildCnx b = mconcat . intersperse (singleton ';') . map b
 
 -- | Build a representation of an OnD.
 buildOnD :: OnD -> Builder
@@ -85,22 +98,6 @@ buildPath = mconcat . intersperse (singleton '-') . map buildPort
 -- | Build a representation of a port.
 buildPort :: Port -> Builder
 buildPort = fromString . show
-
--- | Build a representation of a connection of segment-dates.
-buildCnxDate :: [SegmentDate] -> Builder
-buildCnxDate = buildCnx buildSegmentDate
-
--- | Build a representation of a connection of segment-periods.
-buildCnxPeriod :: [SegmentPeriod] -> Builder
-buildCnxPeriod s = mconcat . intersperse (singleton '\t')
-                 $ [ buildCnx buildSegmentPeriod s
-                   , buildStops $ cxStops s
-                   , buildCarriers $ cxCarriers s
-                   , buildElapsed $ cxElapsedTime s
-                   ]
-
-buildCnx :: (a -> Builder) -> [a] -> Builder
-buildCnx b = mconcat . intersperse (singleton ';') . map b
 
 -- | Build a representation of a segment-date.
 buildSegmentDate :: SegmentDate -> Builder

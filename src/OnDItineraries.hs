@@ -17,7 +17,8 @@ import Journey.MCT.OAGParser (readMCTFile)
 import Journey.MCT.Attributes (attributes)
 import Journey.MCT.Tree (fromList, pruneLookup)
 import Journey.Route (coverages)
-import Journey.GeoCoord (loadReferences, assocToCities, adjacency, portToCountry)
+import Journey.GeoCoord (loadReferences, assocToCities, adjacency, porToCountry,
+                         mkAirportRefs, mkCityRefs)
 import Journey.Builder (buildForSome, buildForOnD, buildForPath)
 import Journey.OnDSegments (fromSegments, toOnDPaths, fromOnD)
 import Journey.Types (OnD)
@@ -32,18 +33,22 @@ readOnDs f = return . map parse . T.lines =<< T.readFile f
 main :: IO ()
 main = do
   [refsFile, mctFile, ssimFile, ondsFile] <- getArgs
+  
   refs <- loadReferences refsFile
+  let airports = mkAirportRefs refs
+      cities = mkCityRefs refs
+  
   mctdb <- fromList attributes <$> readMCTFile mctFile
-  segdb <- fromSegments . assocToCities refs . ssimRegularSegments
+  segdb <- fromSegments . assocToCities airports . ssimRegularSegments
        <$> readSsimFile ssimFile
   onds <- readOnDs ondsFile
 
-  let covs = take 3 . coverages . adjacency refs $ toOnDPaths segdb
+  let covs = take 3 . coverages . adjacency airports $ toOnDPaths segdb
       segs = fromOnD segdb
-      geos = portToCountry refs
+      geos = porToCountry airports
       regn = pruneLookup mctdb
       cntr = connectionsPeriod segs geos regn
 
   LT.putStr . toLazyText $ buildForSome covs onds (\o ->
                              buildForOnD covs o (\p ->
-                               buildForPath o p (cntr p)))
+                               buildForPath o p (cntr p) geos))
